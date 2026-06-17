@@ -80,18 +80,46 @@ Result:
 
 WN18RR dataset:
 ```
-python3 train_auto.py --data_path ./data/WN18RR/ --batchsize 16 --gpu 0 --topk 0.1 --topm -1  --fact_ratio 0.95
+python3 train_auto.py --data_path ./data/WN18RR/ --batchsize 16 --gpu 0 --topk 0.1 --topm -1 --fact_ratio 0.95 --seed 456
 ```
 
 NELL995 dataset:
 ```
-python3 train_auto.py --data_path ./data/nell --batchsize 8 --gpu 0 --topk 0.1 --topm -1  --fact_ratio 0.95
+python3 train_auto.py --data_path ./data/nell --batchsize 8 --gpu 0 --topk 0.1 --topm -1 --fact_ratio 0.95
 ```
 
 YAGO3-10 dataset:
 ```
 python3 train_auto.py --data_path ./data/YAGO --batchsize 4 --gpu 0 --topk 0.1 --topm -1 --fact_ratio 0.995
 ```
+
+## Training on Vast.ai with Auto-Push to GitHub
+
+When running on a remote cloud GPU provider like Vast.ai, you can automatically commit and push training logs (in `results/`) and model checkpoints (in `saveModel/`) to GitHub at the end of each epoch and when training completes.
+
+### 1. Configure Git on your Vast.ai Instance
+Before running the training script, configure your Git username, email, and credentials on the container so it has permission to push to your repository:
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "your.email@example.com"
+```
+
+To authenticate, you can either:
+- **SSH Key (Recommended)**: Generate an SSH key on the instance, add it to your GitHub profile, and clone the repository using the SSH URL (`git@github.com:username/repo.git`).
+- **Personal Access Token (PAT)**: Configure git to cache credentials or clone using your username and GitHub token:
+  ```bash
+  git remote set-url origin https://<your_github_token>@github.com/xtraiter/PIVOT.git
+  ```
+
+### 2. Run Training
+Since the model is optimized with mathematical simplification of GNN projections and **Gradient Checkpointing**, training WN18RR with `batchsize 16` uses less than **4GB of VRAM** (down from >16GB), allowing it to run extremely fast and safe on any card like RTX 3090, 4090, or even lower-end GPUs.
+
+Run WN18RR training with batchsize 16 and seed 456:
+```bash
+python3 train_auto.py --data_path ./data/WN18RR/ --batchsize 16 --gpu 0 --topk 0.1 --topm -1 --fact_ratio 0.95 --seed 456
+```
+The script will automatically print the sync status to GitHub after every best checkpoint:
+`==> Successfully pushed checkpoints and logs to GitHub!`
 
 ## Results
 

@@ -8,9 +8,37 @@ from base_model import BaseModel
 from utils import *
 from PPR_sampler import pprSampler
 
+def git_push_update(message="Auto-commit checkpoints and logs"):
+    import subprocess
+    try:
+        # Check if git is initialized and has a remote
+        res = subprocess.run(["git", "remote"], capture_output=True, text=True)
+        if not res.stdout.strip():
+            print("==> Git remote not found. Skipping auto-push.")
+            return
+            
+        # Add results and saveModel folders
+        subprocess.run(["git", "add", "results/", "data/WN18RR/saveModel/", "data/nell/saveModel/", "data/YAGO/saveModel/", "changes_summary.md", "README.md", "model.py", "base_model.py", "PPR_sampler.py", "train_auto.py", "search_auto.py", ".gitignore"], capture_output=True)
+        
+        # Check if there are changes to commit
+        status = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
+        if not status.stdout.strip():
+            return # No changes
+            
+        subprocess.run(["git", "commit", "-m", message], capture_output=True)
+        
+        # Attempt to push
+        push_res = subprocess.run(["git", "push"], capture_output=True, text=True)
+        if push_res.returncode == 0:
+            print("==> Successfully pushed checkpoints and logs to GitHub!")
+        else:
+            print("==> Git push failed. Please configure your GitHub credentials on this machine (SSH key or PAT).")
+    except Exception as e:
+        print(f"==> Error during git auto-push: {e}")
+
 parser = argparse.ArgumentParser(description="Parser for the one-shot-subgraph framework")
 parser.add_argument('--data_path', type=str, default='data/WN18RR/')
-parser.add_argument('--seed', type=str, default=1234)
+parser.add_argument('--seed', type=int, default=1234)
 parser.add_argument('--topk', type=float, default=0.1) # number of sampled nodes (for a subgraph)
 parser.add_argument('--topm', type=float, default=-1) # number of sampled edges (for a subgraph)
 parser.add_argument('--gpu', type=int, default=0)
@@ -19,7 +47,7 @@ parser.add_argument('--val_num', type=int, default=-1) # how many triples are us
 parser.add_argument('--epoch', type=int, default=200)
 parser.add_argument('--layer', type=int, default=6)
 parser.add_argument('--batchsize', type=int, default=16)
-parser.add_argument('--cpu', type=int, default=1)
+parser.add_argument('--cpu', type=int, default=8)
 parser.add_argument('--weight', type=str, default='')
 parser.add_argument('--add_manual_edges', action='store_true')
 parser.add_argument('--remove_1hop_edges', action='store_true')
@@ -144,6 +172,7 @@ if __name__ == '__main__':
                 # save model weight (by default)
                 BestMetricStr = f'ValMRR_{str(mrr)[:5]}'
                 model.saveModelToFiles(args, BestMetricStr, deleteLastFile=False)
+                git_push_update(f"Saved best checkpoint ValMRR_{str(mrr)[:5]} at epoch {epoch}")
             else:
                 bearing += 1
                 
@@ -153,6 +182,7 @@ if __name__ == '__main__':
                 break
         
         print(best_str)
+        git_push_update(f"Training finished. Best ValMRR: {best_mrr}")
         return best_mrr
     
     # NOTE: best config

@@ -16,6 +16,29 @@ def checkPath(path):
         os.mkdir(path)
     return
 
+_global_homo_graph = None
+
+def _init_worker(graph):
+    global _global_homo_graph
+    _global_homo_graph = graph
+
+def _compute_and_save_ppr_scores(h, ppr_save_path):
+    import os
+    import pickle as pkl
+    import networkx as nx
+    import tempfile
+    ent_ppr_savePath = os.path.join(ppr_save_path, f'{int(h)}.pkl')
+    if os.path.exists(ent_ppr_savePath) and os.path.getsize(ent_ppr_savePath) > 1000:
+        return
+    scores = nx.pagerank(_global_homo_graph, personalization={h: 1})
+    
+    # Atomic write to prevent corruption if process is killed
+    dir_name = os.path.dirname(ent_ppr_savePath)
+    with tempfile.NamedTemporaryFile(dir=dir_name, delete=False, suffix=".tmp") as temp_file:
+        pkl.dump(scores, temp_file)
+        temp_file_path = temp_file.name
+    os.replace(temp_file_path, ent_ppr_savePath)
+
 class pprSampler():
     def __init__(self, n_ent:int, n_rel:int, topk:int, topm:int, homoEdges:list, edge_index:list, data_path:str, split='train', args=None):
         ''' 
@@ -39,14 +62,30 @@ class pprSampler():
         checkPath(self.ppr_savePath)
         print('==> checking ppr scores for each entity...')
         
-        for h in tqdm(range(self.n_ent), ncols=50, leave=False):
+        import multiprocessing
+        from functools import partial
+
+        # Determine number of worker processes
+        num_workers = max(1, multiprocessing.cpu_count() - 4) # leave some CPUs free
+        num_workers = min(64, num_workers) # avoid excessive process overhead
+        print(f'==> Using {num_workers} parallel workers to generate PPR scores...')
+
+        # Filter entities that don't have ppr file yet (or are corrupted/empty)
+        entities_to_compute = []
+        for h in range(self.n_ent):
             ent_ppr_savePath = os.path.join(self.ppr_savePath, f'{int(h)}.pkl')
-            if os.path.exists(ent_ppr_savePath):
-                pass
-            else:
-                # with default setting to generate ppr scores
-                h_ppr_scores = self.generatePPRScoresForOneEntity(h)
-                pkl.dump(h_ppr_scores, open(ent_ppr_savePath, 'wb'))
+            if not os.path.exists(ent_ppr_savePath) or os.path.getsize(ent_ppr_savePath) < 1000:
+                entities_to_compute.append(h)
+
+        if len(entities_to_compute) > 0:
+            worker_func = partial(_compute_and_save_ppr_scores, ppr_save_path=self.ppr_savePath)
+            with multiprocessing.Pool(
+                processes=num_workers,
+                initializer=_init_worker,
+                initargs=(self.homoTrainGraph,)
+            ) as pool:
+                list(tqdm(pool.imap_unordered(worker_func, entities_to_compute), 
+                          total=len(entities_to_compute), ncols=50, leave=False))
         print('finished.')
         
         # build head to edges with sparse matrix

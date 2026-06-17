@@ -12,6 +12,10 @@ from collections import defaultdict
 import torch.nn.functional as F
 import copy
 
+def worker_init_fn(worker_id):
+    import os
+    os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 class BaseModel(object):
     def __init__(self, args, loaders, samplers):
         self.args = args
@@ -23,20 +27,32 @@ class BaseModel(object):
         self.n_samp_ent = args.n_samp_ent
         self.n_rel = loader.n_rel
         self.train_sampler, self.test_sampler = samplers
-        self.trainLoader = DataLoader(loader, batch_size=args.n_batch, num_workers=args.cpu, collate_fn=loader.collate_fn, shuffle=False, prefetch_factor=args.cpu, pin_memory=True)
-        self.valLoader = DataLoader(val_loader, batch_size=args.n_tbatch, num_workers=args.cpu, collate_fn=val_loader.collate_fn, shuffle=False, prefetch_factor=args.cpu, pin_memory=True)
-        self.testLoader = DataLoader(test_loader, batch_size=args.n_tbatch, num_workers=args.cpu, collate_fn=test_loader.collate_fn, shuffle=False, prefetch_factor=args.cpu, pin_memory=True)
+        prefetch = args.cpu if args.cpu > 0 else None
+        self.trainLoader = DataLoader(loader, batch_size=args.n_batch, num_workers=args.cpu, collate_fn=loader.collate_fn, shuffle=False, prefetch_factor=prefetch, pin_memory=True, worker_init_fn=worker_init_fn)
+        self.valLoader = DataLoader(val_loader, batch_size=args.n_tbatch, num_workers=args.cpu, collate_fn=val_loader.collate_fn, shuffle=False, prefetch_factor=prefetch, pin_memory=True, worker_init_fn=worker_init_fn)
+        self.testLoader = DataLoader(test_loader, batch_size=args.n_tbatch, num_workers=args.cpu, collate_fn=test_loader.collate_fn, shuffle=False, prefetch_factor=prefetch, pin_memory=True, worker_init_fn=worker_init_fn)
         self.optimizer = Adam(self.model.parameters(), lr=args.lr, weight_decay=args.lamb)
-        self.scheduler = ReduceLROnPlateau(self.optimizer, mode='max', factor=0.5, patience=2, min_lr=args.lr/20, verbose=True)
+        self.scheduler = ReduceLROnPlateau(self.optimizer, mode='max', factor=0.5, patience=2, min_lr=args.lr/20)
         self.smooth = 1e-5
-        self.t_time = 0
+        self.train_time = 0.0
+        self.t_time = 0.0
         self.mean_rank_dict = {}
+        self.scaler = torch.cuda.amp.GradScaler()
+
+    def _cuda_peak_memory_mb(self):
+        if torch.cuda.is_available():
+            return torch.cuda.max_memory_allocated() / (1024 ** 2)
+        return 0.0
+
+    def _reset_cuda_peak_memory(self):
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
         
     def saveModelToFiles(self, args, best_metric, deleteLastFile=True):
         if args.val_num == -1:
-            savePath = f'{self.args.data_path}/saveModel/topk_{self.args.topk}_layer_{self.args.layer}_{best_metric}.pt'
+            savePath = f'{self.args.data_path}/saveModel/topk_{self.args.topk}_layer_{self.args.layer}_{best_metric}_seed{self.args.seed}.pt'
         else:
-            savePath = f'{self.args.data_path}/saveModel/topk_{self.args.topk}_layer_{self.args.layer}_valNum_{self.args.val_num}_{best_metric}.pt'
+            savePath = f'{self.args.data_path}/saveModel/topk_{self.args.topk}_layer_{self.args.layer}_valNum_{self.args.val_num}_{best_metric}_seed{self.args.seed}.pt'
             
         print(f'Save checkpoint to : {savePath}')
         torch.save({
@@ -64,39 +80,42 @@ class BaseModel(object):
     def train_batch(self,):        
         epoch_loss = 0
         reach_tails_list = []
-        t_time = time.time()
+        self._reset_cuda_peak_memory()
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+        t_time = time.perf_counter()
         self.model.train()
         
         for batch_data in tqdm(self.trainLoader, ncols=50, leave=False):                      
             # prepare data    
             subs, rels, objs, subgraph_data = self.prepareData(batch_data)
             
-            # forward
+            # forward with autocast
             self.model.zero_grad()
-            scores = self.model(subs, rels, subgraph_data)
-            
-            # loss calculation
-            pos_scores = scores[[torch.arange(len(scores)).cuda(), objs.flatten()]]
-            max_n = torch.max(scores, 1, keepdim=True)[0]
-            loss = torch.sum(- pos_scores + max_n + torch.log(torch.sum(torch.exp(scores - max_n),1))) 
+            with torch.cuda.amp.autocast():
+                scores = self.model(subs, rels, subgraph_data)
+                
+                # loss calculation
+                pos_scores = scores[torch.arange(len(scores)).cuda(), objs.flatten()]
+                max_n = torch.max(scores, 1, keepdim=True)[0]
+                loss = torch.sum(- pos_scores + max_n + torch.log(torch.sum(torch.exp(scores - max_n),1))) 
 
-            # loss backward
-            loss.backward()
-            self.optimizer.step()
-
-            # avoid NaN
-            # for p in self.model.parameters():
-            #     X = p.data.clone()
-            #     flag = X != X
-            #     X[flag] = np.random.random()
-            #     p.data.copy_(X)
+            # loss backward with scaler
+            self.scaler.scale(loss).backward()
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
 
             # cover tail entity or not
             reach_tails = (pos_scores == 0).detach().int().reshape(-1).cpu().tolist()
             reach_tails_list += reach_tails
             epoch_loss += loss.item()
             
-        self.t_time += time.time() - t_time
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+        train_latency_ms = (time.perf_counter() - t_time) * 1000.0
+        train_peak_mem_mb = self._cuda_peak_memory_mb()
+        self.train_time += train_latency_ms / 1000.0
+        self.t_time = self.train_time
         
         # evaluate on val/test set
         valid_mrr, out_str = self.evaluate()    
@@ -110,13 +129,19 @@ class BaseModel(object):
             fact_data = np.concatenate([np.array(self.loader.fact_data), self.loader.idd_data], 0)
             self.train_sampler.updateEdges(fact_data)
         
-        return valid_mrr, out_str
+        return valid_mrr, f'[TRAIN] latency_ms:{train_latency_ms:.2f} peak_gpu_mem_mb:{train_peak_mem_mb:.2f}\t' + out_str
     
     @torch.no_grad()
     def evaluate(self, eval_val=True, eval_test=True, verbose=False, rank_CR=False, mean_rank=False):
         ranking = []
         self.model.eval()
-        i_time = time.time()
+        self._reset_cuda_peak_memory()
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+        i_time = time.perf_counter()
+        data_prep_ms = 0.0
+        forward_ms = 0.0
+        ranking_ms = 0.0
         
         # eval on val set
         if eval_val:
@@ -124,12 +149,22 @@ class BaseModel(object):
             if mean_rank: mean_rank_list = []
             for batch_data in tqdm(self.valLoader, ncols=50, leave=False):      
                 # prepare data            
+                prep_t0 = time.perf_counter()
                 subs, rels, objs, subgraph_data = self.prepareData(batch_data)
+                data_prep_ms += (time.perf_counter() - prep_t0) * 1000.0
                 
-                # forward
-                scores = self.model(subs, rels, subgraph_data, mode='valid').data.cpu().numpy()
+                # forward with autocast
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                fwd_t0 = time.perf_counter()
+                with torch.cuda.amp.autocast():
+                    scores = self.model(subs, rels, subgraph_data, mode='valid').float().data.cpu().numpy()
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                forward_ms += (time.perf_counter() - fwd_t0) * 1000.0
 
                 # calculate rank
+                rank_t0 = time.perf_counter()
                 subs = subs.cpu().numpy()
                 rels = rels.cpu().numpy()
                 objs = objs.cpu().numpy()
@@ -152,6 +187,7 @@ class BaseModel(object):
                 ans_score = scores[ans].reshape(-1)
                 reach_tails = (ans_score == 0).astype(int).tolist() # (0/1)
                 val_reach_tails_list += reach_tails
+                ranking_ms += (time.perf_counter() - rank_t0) * 1000.0
 
             ranking = np.array(ranking)
             v_mrr, v_h1, v_h10 = cal_performance(ranking)
@@ -179,12 +215,22 @@ class BaseModel(object):
             if mean_rank: mean_rank_list = []
             for batch_data in tqdm(self.testLoader, ncols=50, leave=False):        
                 # prepare data            
+                prep_t0 = time.perf_counter()
                 subs, rels, objs, subgraph_data = self.prepareData(batch_data)
+                data_prep_ms += (time.perf_counter() - prep_t0) * 1000.0
                 
-                # forward
-                scores = self.model(subs, rels, subgraph_data, mode='test').data.cpu().numpy()
+                # forward with autocast
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                fwd_t0 = time.perf_counter()
+                with torch.cuda.amp.autocast():
+                    scores = self.model(subs, rels, subgraph_data, mode='test').float().data.cpu().numpy()
+                if torch.cuda.is_available():
+                    torch.cuda.synchronize()
+                forward_ms += (time.perf_counter() - fwd_t0) * 1000.0
 
                 # calculate rank
+                rank_t0 = time.perf_counter()
                 subs = subs.cpu().numpy()
                 rels = rels.cpu().numpy()
                 objs = objs.cpu().numpy()
@@ -207,6 +253,7 @@ class BaseModel(object):
                 ans_score = scores[ans].reshape(-1)
                 reach_tails = (ans_score == 0).astype(int).tolist() # (0/1)
                 test_reach_tails_list += reach_tails
+                ranking_ms += (time.perf_counter() - rank_t0) * 1000.0
 
             ranking = np.array(ranking)
             t_mrr, t_h1, t_h10 = cal_performance(ranking)
@@ -227,6 +274,9 @@ class BaseModel(object):
         else:
             t_mrr, t_h1, t_h10 = -1, -1, -1
             
-        i_time = time.time() - i_time
-        out_str = '[VALID] MRR:%.4f H@1:%.4f H@10:%.4f\t [TEST] MRR:%.4f H@1:%.4f H@10:%.4f \t[TIME] train:%.4f inference:%.4f\n'%(v_mrr, v_h1, v_h10, t_mrr, t_h1, t_h10, self.t_time, i_time)
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+        eval_latency_ms = (time.perf_counter() - i_time) * 1000.0
+        eval_peak_mem_mb = self._cuda_peak_memory_mb()
+        out_str = '[VALID] MRR:%.6f H@1:%.6f H@10:%.6f\t [TEST] MRR:%.6f H@1:%.6f H@10:%.6f \t[TIME] train:%.4f inference:%.4f \t[LATENCY] eval_total_ms:%.2f data_prep_ms:%.2f forward_ms:%.2f ranking_ms:%.2f \t[PEAK_GPU_MEM] %.2fMB\n'%(v_mrr, v_h1, v_h10, t_mrr, t_h1, t_h10, self.train_time, eval_latency_ms / 1000.0, eval_latency_ms, data_prep_ms, forward_ms, ranking_ms, eval_peak_mem_mb)
         return v_mrr, out_str

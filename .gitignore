@@ -1,0 +1,18 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# OS files
+.DS_Store
+Thumbs.db
+.ipynb_checkpoints/
+
+# PPR Scores cache (Dung lượng cực lớn, >19GB cho WN18RR, >180GB cho YAGO)
+# Đã được tối ưu hóa để chạy song song cực nhanh (1-2 phút) trên Vast.ai nên không cần đẩy lên GitHub.
+**/ppr_scores/
+
+# Cho phép đẩy kết quả logs và checkpoints lên GitHub
+# Checkpoint mô hình này rất nhẹ (~4MB) nên đẩy lên GitHub hoàn toàn khả thi và nhanh chóng.
+!results/
+!**/saveModel/
