@@ -128,6 +128,12 @@ if __name__ == '__main__':
             
     def run_model(params):       
         print('==> start training...')    
+        if args.weight != '':
+            import re
+            m = re.search(r'layer_(\d+)', args.weight)
+            if m:
+                params['n_layer'] = int(m.group(1))
+                print(f"==> Automatically set layer={params['n_layer']} from weight path.")
         print(params)
         args.lr = params['lr']
         args.decay_rate = params['decay_rate']

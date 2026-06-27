@@ -28,16 +28,16 @@ class BaseModel(object):
         self.n_rel = loader.n_rel
         self.train_sampler, self.test_sampler = samplers
         prefetch = args.cpu if args.cpu > 0 else None
-        self.trainLoader = DataLoader(loader, batch_size=args.n_batch, num_workers=args.cpu, collate_fn=loader.collate_fn, shuffle=False, prefetch_factor=prefetch, pin_memory=True, worker_init_fn=worker_init_fn)
-        self.valLoader = DataLoader(val_loader, batch_size=args.n_tbatch, num_workers=args.cpu, collate_fn=val_loader.collate_fn, shuffle=False, prefetch_factor=prefetch, pin_memory=True, worker_init_fn=worker_init_fn)
-        self.testLoader = DataLoader(test_loader, batch_size=args.n_tbatch, num_workers=args.cpu, collate_fn=test_loader.collate_fn, shuffle=False, prefetch_factor=prefetch, pin_memory=True, worker_init_fn=worker_init_fn)
+        self.trainLoader = DataLoader(loader, batch_size=args.n_batch, num_workers=args.cpu, collate_fn=loader.collate_fn, shuffle=False, prefetch_factor=prefetch, pin_memory=False, worker_init_fn=worker_init_fn)
+        self.valLoader = DataLoader(val_loader, batch_size=args.n_tbatch, num_workers=args.cpu, collate_fn=val_loader.collate_fn, shuffle=False, prefetch_factor=prefetch, pin_memory=False, worker_init_fn=worker_init_fn)
+        self.testLoader = DataLoader(test_loader, batch_size=args.n_tbatch, num_workers=args.cpu, collate_fn=test_loader.collate_fn, shuffle=False, prefetch_factor=prefetch, pin_memory=False, worker_init_fn=worker_init_fn)
         self.optimizer = Adam(self.model.parameters(), lr=args.lr, weight_decay=args.lamb)
         self.scheduler = ReduceLROnPlateau(self.optimizer, mode='max', factor=0.5, patience=2, min_lr=args.lr/20)
         self.smooth = 1e-5
         self.train_time = 0.0
         self.t_time = 0.0
         self.mean_rank_dict = {}
-        self.scaler = torch.cuda.amp.GradScaler()
+        self.scaler = torch.amp.GradScaler('cuda')
 
     def _cuda_peak_memory_mb(self):
         if torch.cuda.is_available():
@@ -92,7 +92,7 @@ class BaseModel(object):
             
             # forward with autocast
             self.model.zero_grad()
-            with torch.cuda.amp.autocast():
+            with torch.amp.autocast('cuda'):
                 scores = self.model(subs, rels, subgraph_data)
                 
                 # loss calculation
@@ -157,7 +157,7 @@ class BaseModel(object):
                 if torch.cuda.is_available():
                     torch.cuda.synchronize()
                 fwd_t0 = time.perf_counter()
-                with torch.cuda.amp.autocast():
+                with torch.amp.autocast('cuda'):
                     scores = self.model(subs, rels, subgraph_data, mode='valid').float().data.cpu().numpy()
                 if torch.cuda.is_available():
                     torch.cuda.synchronize()
@@ -223,7 +223,7 @@ class BaseModel(object):
                 if torch.cuda.is_available():
                     torch.cuda.synchronize()
                 fwd_t0 = time.perf_counter()
-                with torch.cuda.amp.autocast():
+                with torch.amp.autocast('cuda'):
                     scores = self.model(subs, rels, subgraph_data, mode='test').float().data.cpu().numpy()
                 if torch.cuda.is_available():
                     torch.cuda.synchronize()

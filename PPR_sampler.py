@@ -39,6 +39,19 @@ def _compute_and_save_ppr_scores(h, ppr_save_path):
         temp_file_path = temp_file.name
     os.replace(temp_file_path, ent_ppr_savePath)
 
+def _load_one_ppr(h, ppr_save_path):
+    import os
+    import pickle as pkl
+    ent_ppr_savePath = os.path.join(ppr_save_path, f'{int(h)}.pkl')
+    if os.path.exists(ent_ppr_savePath):
+        try:
+            with open(ent_ppr_savePath, 'rb') as f:
+                scores = pkl.load(f)
+            return h, scores
+        except Exception:
+            return h, None
+    return h, None
+
 class pprSampler():
     def __init__(self, n_ent:int, n_rel:int, topk:int, topm:int, homoEdges:list, edge_index:list, data_path:str, split='train', args=None):
         ''' 
@@ -100,6 +113,26 @@ class pprSampler():
         del self.homoEdges
         del self.homoTrainGraph
         
+        self.ppr_cache = {}
+        # Pre-load all PPR scores in memory to avoid extremely slow disk I/O / unpickling during training
+        if self.n_ent <= 50000:
+            print(f"==> Pre-loading all {self.n_ent} PPR scores into memory for split '{split}'...")
+            self.all_ppr_scores = np.zeros((self.n_ent, self.n_ent), dtype=np.float32)
+            
+            import multiprocessing
+            from functools import partial
+            num_loader_workers = min(32, multiprocessing.cpu_count())
+            worker_func = partial(_load_one_ppr, ppr_save_path=self.ppr_savePath)
+            
+            with multiprocessing.Pool(processes=num_loader_workers) as pool:
+                for h, scores in tqdm(pool.imap_unordered(worker_func, range(self.n_ent), chunksize=200), total=self.n_ent, desc="Loading PPR scores", ncols=50, leave=False):
+                    if scores is not None:
+                        for k, v in scores.items():
+                            self.all_ppr_scores[h, k] = v
+            self.use_in_memory_ppr = True
+        else:
+            self.use_in_memory_ppr = False
+
         # build sparse tensor self.PPR_W for matrix-computation PPR
         '''
         tmp_degree, tmp_adj = torch.zeros(self.n_ent, self.n_ent), torch.zeros(self.n_ent, self.n_ent)
@@ -119,8 +152,11 @@ class pprSampler():
         self.edge_index = torch.LongTensor(edge_index)
     
     def getPPRscores(self, ent):
+        if ent in self.ppr_cache:
+            return self.ppr_cache[ent]
         ent_ppr_savePath = os.path.join(self.ppr_savePath, f'{int(ent)}.pkl')
         scores = pkl.load(open(ent_ppr_savePath, 'rb'))
+        self.ppr_cache[ent] = scores
         return scores
         
     def generatePPRScoresForOneEntity(self, h, method='nx'):
@@ -149,7 +185,10 @@ class pprSampler():
     
     def sampleSubgraph(self, ent: int, cand=None):    
         # sample subgraph to get the edges
-        ppr_scores = np.array(list(self.getPPRscores(ent).values()))
+        if hasattr(self, 'use_in_memory_ppr') and self.use_in_memory_ppr:
+            ppr_scores = self.all_ppr_scores[ent]
+        else:
+            ppr_scores = np.array(list(self.getPPRscores(ent).values()))
         
         # gurantee the candidates are sampled
         if cand != None and self.topk < self.n_ent:
