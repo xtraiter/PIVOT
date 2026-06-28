@@ -63,18 +63,15 @@ if __name__ == '__main__':
     args.dataset = dataset
     
     # check all output paths
-    checkPath('./results/')
-    checkPath(f'./results/{dataset}/')
+    checkPath(results_dir)
     checkPath(f'{args.data_path}/saveModel/')
     
-    results_dir = 'results'
+    results_dir = os.path.join(args.data_path, 'results')
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
-    if not os.path.exists(os.path.join(results_dir, dataset)):
-        os.makedirs(os.path.join(results_dir, dataset))
             
-    time = str(time.strftime("%Y-%m-%d-%H:%M:%S", time.localtime()))
-    args.perf_file = os.path.join(results_dir,  dataset + '/' + time + '.txt')
+    time_str = str(time.strftime("%Y-%m-%d-%H:%M:%S", time.localtime()))
+    args.perf_file = os.path.join(results_dir, time_str + '.txt')
     gpu = args.gpu
     torch.cuda.set_device(gpu)
     print('==> gpu:', gpu)
@@ -114,7 +111,7 @@ if __name__ == '__main__':
     loader.addSampler(train_sampler)
     val_loader.addSampler(test_sampler)
     test_loader.addSampler(test_sampler)
-    HPO_save_path = f'./results/{dataset}/search_log.pkl'
+    HPO_save_path = os.path.join(results_dir, 'search_log.pkl')
     
     def loadSearchLog(file):
         assert os.path.exists(file)

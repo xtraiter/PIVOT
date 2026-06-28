@@ -18,7 +18,7 @@ def git_push_update(message="Auto-commit checkpoints and logs"):
             return
             
         # Add results and saveModel folders
-        subprocess.run(["git", "add", "results/", "data/WN18RR/saveModel/", "data/nell/saveModel/", "data/YAGO/saveModel/", "changes_summary.md", "README.md", "model.py", "base_model.py", "PPR_sampler.py", "train_auto.py", "search_auto.py", ".gitignore"], capture_output=True)
+        subprocess.run(["git", "add", "data/WN18RR/results/", "data/nell/results/", "data/YAGO/results/", "data/WN18RR/saveModel/", "data/nell/saveModel/", "data/YAGO/saveModel/", "changes_summary.md", "README.md", "model.py", "base_model.py", "PPR_sampler.py", "train_auto.py", "search_auto.py", ".gitignore"], capture_output=True)
         
         # Check if there are changes to commit
         status = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
@@ -71,15 +71,13 @@ if __name__ == '__main__':
     else:
         dataset = dataset[-2]
     
-    results_dir = 'results'
+    results_dir = os.path.join(args.data_path, 'results')
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
-    if not os.path.exists(os.path.join(results_dir, dataset)):
-        os.makedirs(os.path.join(results_dir, dataset))
 
     opts = args
-    time = str(time.strftime("%Y-%m-%d-%H:%M:%S", time.localtime()))
-    opts.perf_file = os.path.join(results_dir,  dataset + '/' + time + '.txt')
+    time_str = str(time.strftime("%Y-%m-%d-%H:%M:%S", time.localtime()))
+    opts.perf_file = os.path.join(results_dir, time_str + '.txt')
     gpu = args.gpu
     torch.cuda.set_device(gpu)
     print('==> gpu:', gpu)
@@ -122,8 +120,7 @@ if __name__ == '__main__':
     test_loader.addSampler(test_sampler)
     
     # check all output paths
-    checkPath('./results/')
-    checkPath(f'./results/{dataset}/')
+    checkPath(results_dir)
     checkPath(f'{args.data_path}/saveModel/')
             
     def run_model(params):       

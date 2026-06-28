@@ -214,13 +214,44 @@ Tất cả các tối ưu hóa, sửa lỗi tương thích và định dạng lo
 
 ---
 
+---
+
+## 13. Đồng bộ Spec v2 & Đánh giá Đa Seed cho Learned Pruning
+*   **File sửa đổi**: [run_learned_pruning_wn18rr.py](file:///home/vanba/KLTN/one-shot-subgraph/run_learned_pruning_wn18rr.py)
+*   **Chi tiết thay đổi**:
+    - **Sửa số lượng đặc trưng**: Tăng từ 6 lên 7 đặc trưng bằng việc tính toán và tích hợp `tail_freq_for_q` (tần suất entity làm tail cho relation q — đặc trưng quan trọng nhóm C) vào feature builder.
+    - **Sửa kiến trúc MLP**: Nâng cấp ẩn từ `32→16` (bản v1) lên `64→32` (spec v2) với 2625 tham số.
+    - **Hard Negative Mining**: Thay vì tính BCE trên toàn bộ pool, thực hiện chọn lọc 30 hard negatives (PPR cao nhất nhưng sai) + 20 random negatives cho mỗi query. Loss kết hợp `BCE(pos_weight)` và `pairwise_hinge` (lambda_rank = 0.4, margin = 1.0) giúp model tập trung phân biệt ca khó.
+    - **Đo lường PPR Pool Coverage**: Tính toán tỷ lệ bao phủ của tập candidate pool để xác định trần hiệu năng lý thuyết (Upper Bound) mà bất kỳ bộ prune nào có thể đạt tới.
+    - **Realistic vs Oracle evaluation**: Định nghĩa rõ 2 metric đánh giá:
+        *   *Realistic Recall*: Chỉ tính là hit nếu true tail nằm trong PPR candidate pool ban đầu (sát thực tế inference).
+        *   *Oracle Recall*: Tự chèn true tail vào pool nếu bị PPR bỏ lỡ (đánh giá năng lực xếp hạng thuần túy của MLP).
+    - **Tối ưu hóa chạy đa seed**: Hỗ trợ lặp qua danh sách seed `[42, 123, 1234]`. Bước tải trước PPR scores và trích xuất đặc trưng được thực hiện 1 lần duy nhất để tái sử dụng, giúp giảm tổng thời gian chạy đa seed từ 48 phút xuống còn ~17 phút.
+    - **Lưu kết quả**: Tính toán Mean ± Std của Realistic và Oracle Recall cho từng budget K, tự động ghi vào log `pruning_mlp_v2.log` và xuất ra file CSV `data/WN18RR/budget_results/pruning_mlp_aggregated_summary.csv`.
+
+---
+
+## 14. Tổ chức lại Thư mục Kết quả & Dọn dẹp Mã nguồn
+*   **Files sửa đổi**: [train_auto.py](file:///home/vanba/KLTN/one-shot-subgraph/train_auto.py), [search_auto.py](file:///home/vanba/KLTN/one-shot-subgraph/search_auto.py)
+*   **Files bị xóa**: `convert_checkpoint.py`, `run_all.sh`, `aggregate_seeds.py`
+*   **Chi tiết thay đổi**:
+    - Chuyển toàn bộ các tệp kết quả log và HPO log từ thư mục gốc `./results/{dataset}/` vào thư mục của từng dataset tương ứng: `./data/{dataset}/results/` (đối với WN18RR là `data/WN18RR/results/`).
+    - Cập nhật hàm `git_push_update` để add đúng đường dẫn lưu kết quả mới.
+    - Xóa bỏ các tập tin cấu hình/chạy benchmark tự động trung gian và cơ chế tự động không cần thiết (`run_all.sh`, `aggregate_seeds.py`, `convert_checkpoint.py`) nhằm giữ lại cấu trúc chính của mã nguồn bài báo gốc.
+
+---
+
 ## Tóm tắt file theo thứ tự ảnh hưởng
 
-| File | Trạng thái | Số hàm thay đổi/thêm |
-|------|-----------|----------------------|
-| `PPR_sampler.py` | Sửa đổi | 4 (thêm `_init_worker`, `_compute_and_save_ppr_scores`, `_load_one_ppr`, sửa `__init__`) |
-| `base_model.py` | Sửa đổi | 4 (sửa `__init__`, `train_batch`, `evaluate`, `saveModelToFiles`) |
-| `train_auto.py` | Sửa đổi | 2 (sửa `git_push_update`, `run_model`) |
-| `search_auto.py` | Sửa đổi | 1 (sửa `--seed type`) |
-| `budgeted_protocol.py` | **Tạo mới** | 4 hàm + `PARSE_REGEX` + `__main__` |
-| `learned_pruning.py` | **Tạo mới** | 6 hàm + class `PruningMLP` + `__main__` |
+| File | Trạng thái | Số hàm thay đổi/thêm | Mô tả tóm tắt |
+|------|-----------|----------------------|---------------|
+| `PPR_sampler.py` | Sửa đổi | 4 | Tối ưu hóa song song PPR & Tải trước RAM |
+| `base_model.py` | Sửa đổi | 4 | Hỗ trợ AMP FP16, logs chi tiết & fix warning PyTorch 2.6+ |
+| `train_auto.py` | Sửa đổi | 2 | Cập nhật git add, chuyển kết quả vào data/<dataset>/results/ |
+| `search_auto.py` | Sửa đổi | 1 | Fix type seed, chuyển kết quả vào data/<dataset>/results/ |
+| `run_learned_pruning_wn18rr.py` | **Sửa đổi lớn (v3)** | 5 | Hỗ trợ 7 features, 64->32 architecture, hard-neg mining, multi-seed, đo coverage & output CSV |
+| `budgeted_protocol.py` | **Tạo mới** | 4 | Chạy budget sweep, parse log regex, xuất mean±std |
+| `learned_pruning.py` | **Tạo mới** | 6 | Định nghĩa mô hình PruningMLP, các hàm loss và prune candidates |
+| `convert_checkpoint.py` | **Đã xóa** | - | Tập tin trung gian chuyển đổi checkpoint |
+| `run_all.sh` | **Đã xóa** | - | Script chạy tự động baseline |
+| `aggregate_seeds.py` | **Đã xóa** | - | Script gom kết quả benchmark đa seed cũ |
