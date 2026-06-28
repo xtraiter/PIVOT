@@ -1,0 +1,1 @@
+Namespace(data_path='./data/WN18RR/', seed=0, topk=0.01, topm=-1.0, gpu=0, fact_ratio=0.75, val_num=-1, epoch=200, layer=6, batchsize=16, cpu=8, weight='./savedModels/WN18RR_topk_0.1_layer_6_ValMRR_0.569.pt', add_manual_edges=False, remove_1hop_edges=False, only_eval=True, not_shuffle_train=False, perf_file='results/WN18RR/2026-06-28-07:44:16.txt', n_batch=16, n_tbatch=16)
