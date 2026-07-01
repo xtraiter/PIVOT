@@ -47,12 +47,12 @@ class BaseModel(object):
     def _reset_cuda_peak_memory(self):
         if torch.cuda.is_available():
             torch.cuda.reset_peak_memory_stats()
-        
     def saveModelToFiles(self, args, best_metric, deleteLastFile=True):
+        suffix = '_mlp' if (hasattr(args, 'use_learned_pruning') and args.use_learned_pruning) else ''
         if args.val_num == -1:
-            savePath = f'{self.args.data_path}/saveModel/topk_{self.args.topk}_layer_{self.args.layer}_{best_metric}_seed{self.args.seed}.pt'
+            savePath = f'{self.args.data_path}/saveModel/topk_{self.args.topk}_layer_{self.args.layer}_{best_metric}_seed{self.args.seed}{suffix}.pt'
         else:
-            savePath = f'{self.args.data_path}/saveModel/topk_{self.args.topk}_layer_{self.args.layer}_valNum_{self.args.val_num}_{best_metric}_seed{self.args.seed}.pt'
+            savePath = f'{self.args.data_path}/saveModel/topk_{self.args.topk}_layer_{self.args.layer}_valNum_{self.args.val_num}_{best_metric}_seed{self.args.seed}{suffix}.pt'
             
         print(f'Save checkpoint to : {savePath}')
         torch.save({

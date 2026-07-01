@@ -53,6 +53,8 @@ parser.add_argument('--add_manual_edges', action='store_true')
 parser.add_argument('--remove_1hop_edges', action='store_true')
 parser.add_argument('--only_eval', action='store_true')
 parser.add_argument('--not_shuffle_train', action='store_true')
+parser.add_argument('--use_learned_pruning', action='store_true')
+parser.add_argument('--pruning_model_path', type=str, default='')
 args = parser.parse_args()
 
 class Options(object):

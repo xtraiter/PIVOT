@@ -5,14 +5,15 @@ import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint
 
 class GNNLayer(torch.nn.Module):
-    def __init__(self, in_dim, out_dim, attn_dim, n_rel, act=lambda x:x):
+    def __init__(self, in_dim, out_dim, attn_dim, n_rel, act=lambda x:x, add_manual_edges=False):
         super(GNNLayer, self).__init__()
         self.n_rel = n_rel
         self.in_dim = in_dim
         self.out_dim = out_dim
         self.attn_dim = attn_dim
         self.act = act
-        self.rela_embed = nn.Embedding(2*n_rel+1, in_dim)
+        n_embed = 2*n_rel+3 if add_manual_edges else 2*n_rel+1
+        self.rela_embed = nn.Embedding(n_embed, in_dim)
         self.Ws_attn = nn.Linear(in_dim, attn_dim, bias=False)
         self.Wr_attn = nn.Linear(in_dim, attn_dim, bias=False)
         self.Wqr_attn = nn.Linear(in_dim, attn_dim)
@@ -78,9 +79,10 @@ class GNN_auto(torch.nn.Module):
         acts = {'relu': nn.ReLU(), 'tanh': torch.tanh, 'idd': lambda x:x}
         act = acts[params.act]
 
+        add_manual_edges = getattr(params, 'add_manual_edges', False)
         self.gnn_layers = []
         for i in range(self.n_layer):
-            self.gnn_layers.append(GNNLayer(self.hidden_dim, self.hidden_dim, self.attn_dim, self.n_rel, act=act))
+            self.gnn_layers.append(GNNLayer(self.hidden_dim, self.hidden_dim, self.attn_dim, self.n_rel, act=act, add_manual_edges=add_manual_edges))
         self.gnn_layers = nn.ModuleList(self.gnn_layers)
         self.dropout = nn.Dropout(params.dropout)
         self.gate = nn.GRU(self.hidden_dim, self.hidden_dim)
@@ -90,7 +92,8 @@ class GNN_auto(torch.nn.Module):
             for i in range(self.n_layer)
         ])
         
-        if self.params.initializer == 'relation': self.query_rela_embed = nn.Embedding(2*self.n_rel+1, self.hidden_dim)
+        n_query_embed = 2*self.n_rel+3 if add_manual_edges else 2*self.n_rel+1
+        if self.params.initializer == 'relation': self.query_rela_embed = nn.Embedding(n_query_embed, self.hidden_dim)
         if self.params.readout == 'linear':
             if self.params.concatHidden:
                 self.W_final = nn.Linear(self.hidden_dim * (self.n_layer+1), 1, bias=False)

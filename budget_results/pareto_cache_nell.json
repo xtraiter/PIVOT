@@ -1,0 +1,542 @@
+[
+  {
+    "alpha": 0.15,
+    "beta": 0.0,
+    "layer": 8,
+    "budget": 0.01,
+    "MRR": 0.5088617356988289,
+    "latency_per_query_ms": 16.748357076505616,
+    "peak_gpu_mem_mb": 280.0
+  },
+  {
+    "alpha": 0.15,
+    "beta": 0.0,
+    "layer": 8,
+    "budget": 0.05,
+    "MRR": 0.5325230298564081,
+    "latency_per_query_ms": 34.82384426905035,
+    "peak_gpu_mem_mb": 800.0
+  },
+  {
+    "alpha": 0.15,
+    "beta": 0.0,
+    "layer": 8,
+    "budget": 0.1,
+    "MRR": 0.5317658630430508,
+    "latency_per_query_ms": 56.88292331263833,
+    "peak_gpu_mem_mb": 1450.0
+  },
+  {
+    "alpha": 0.15,
+    "beta": 0.0,
+    "layer": 8,
+    "budget": 0.2,
+    "MRR": 0.5287674347291529,
+    "latency_per_query_ms": 102.7896064077537,
+    "peak_gpu_mem_mb": 2750.0
+  },
+  {
+    "alpha": 0.15,
+    "beta": 0.25,
+    "layer": 8,
+    "budget": 0.01,
+    "MRR": 0.508542560043586,
+    "latency_per_query_ms": 19.265262807032524,
+    "peak_gpu_mem_mb": 280.0
+  },
+  {
+    "alpha": 0.15,
+    "beta": 0.25,
+    "layer": 8,
+    "budget": 0.05,
+    "MRR": 0.5295342702464297,
+    "latency_per_query_ms": 37.26829115359377,
+    "peak_gpu_mem_mb": 800.0
+  },
+  {
+    "alpha": 0.15,
+    "beta": 0.25,
+    "layer": 8,
+    "budget": 0.1,
+    "MRR": 0.5290867197553423,
+    "latency_per_query_ms": 60.12098113578302,
+    "peak_gpu_mem_mb": 1450.0
+  },
+  {
+    "alpha": 0.15,
+    "beta": 0.25,
+    "layer": 8,
+    "budget": 0.2,
+    "MRR": 0.5264377124707591,
+    "latency_per_query_ms": 104.13754108374349,
+    "peak_gpu_mem_mb": 2750.0
+  },
+  {
+    "alpha": 0.15,
+    "beta": 0.5,
+    "layer": 8,
+    "budget": 0.01,
+    "MRR": 0.5073142473325952,
+    "latency_per_query_ms": 18.993584439832787,
+    "peak_gpu_mem_mb": 280.0
+  },
+  {
+    "alpha": 0.15,
+    "beta": 0.5,
+    "layer": 8,
+    "budget": 0.05,
+    "MRR": 0.5275876962986648,
+    "latency_per_query_ms": 37.045987962239394,
+    "peak_gpu_mem_mb": 800.0
+  },
+  {
+    "alpha": 0.15,
+    "beta": 0.5,
+    "layer": 8,
+    "budget": 0.1,
+    "MRR": 0.5297742236995134,
+    "latency_per_query_ms": 60.73282438446078,
+    "peak_gpu_mem_mb": 1450.0
+  },
+  {
+    "alpha": 0.15,
+    "beta": 0.5,
+    "layer": 8,
+    "budget": 0.2,
+    "MRR": 0.5245752518137866,
+    "latency_per_query_ms": 105.03376410234397,
+    "peak_gpu_mem_mb": 2750.0
+  },
+  {
+    "alpha": 0.15,
+    "beta": 0.75,
+    "layer": 8,
+    "budget": 0.01,
+    "MRR": 0.48411092258970984,
+    "latency_per_query_ms": 19.227808637737407,
+    "peak_gpu_mem_mb": 280.0
+  },
+  {
+    "alpha": 0.15,
+    "beta": 0.75,
+    "layer": 8,
+    "budget": 0.05,
+    "MRR": 0.5063756980183457,
+    "latency_per_query_ms": 36.92450321128885,
+    "peak_gpu_mem_mb": 800.0
+  },
+  {
+    "alpha": 0.15,
+    "beta": 0.75,
+    "layer": 8,
+    "budget": 0.1,
+    "MRR": 0.5067083062502067,
+    "latency_per_query_ms": 59.699680655040595,
+    "peak_gpu_mem_mb": 1450.0
+  },
+  {
+    "alpha": 0.15,
+    "beta": 0.75,
+    "layer": 8,
+    "budget": 0.2,
+    "MRR": 0.504852278184509,
+    "latency_per_query_ms": 104.6991466938853,
+    "peak_gpu_mem_mb": 2750.0
+  },
+  {
+    "alpha": 0.15,
+    "beta": 1.0,
+    "layer": 8,
+    "budget": 0.01,
+    "MRR": 0.4479422890710441,
+    "latency_per_query_ms": 19.493251387631034,
+    "peak_gpu_mem_mb": 280.0
+  },
+  {
+    "alpha": 0.15,
+    "beta": 1.0,
+    "layer": 8,
+    "budget": 0.05,
+    "MRR": 0.469779156350029,
+    "latency_per_query_ms": 37.91127245605159,
+    "peak_gpu_mem_mb": 800.0
+  },
+  {
+    "alpha": 0.15,
+    "beta": 1.0,
+    "layer": 8,
+    "budget": 0.1,
+    "MRR": 0.47004032987612027,
+    "latency_per_query_ms": 60.10443179750238,
+    "peak_gpu_mem_mb": 1450.0
+  },
+  {
+    "alpha": 0.15,
+    "beta": 1.0,
+    "layer": 8,
+    "budget": 0.2,
+    "MRR": 0.4681968612358692,
+    "latency_per_query_ms": 104.33590697555078,
+    "peak_gpu_mem_mb": 2750.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 0.0,
+    "layer": 8,
+    "budget": 0.01,
+    "MRR": 0.51917136828119,
+    "latency_per_query_ms": 16.869233289997705,
+    "peak_gpu_mem_mb": 280.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 0.0,
+    "layer": 8,
+    "budget": 0.05,
+    "MRR": 0.5406988963044107,
+    "latency_per_query_ms": 34.44217585880588,
+    "peak_gpu_mem_mb": 800.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 0.0,
+    "layer": 8,
+    "budget": 0.1,
+    "MRR": 0.5412801557916054,
+    "latency_per_query_ms": 56.26073900481629,
+    "peak_gpu_mem_mb": 1450.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 0.0,
+    "layer": 8,
+    "budget": 0.2,
+    "MRR": 0.5390571222262189,
+    "latency_per_query_ms": 101.76968061452011,
+    "peak_gpu_mem_mb": 2750.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 0.25,
+    "layer": 8,
+    "budget": 0.01,
+    "MRR": 0.5162369598446372,
+    "latency_per_query_ms": 19.67180914478423,
+    "peak_gpu_mem_mb": 280.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 0.25,
+    "layer": 8,
+    "budget": 0.05,
+    "MRR": 0.5396149177195837,
+    "latency_per_query_ms": 37.662041984697396,
+    "peak_gpu_mem_mb": 800.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 0.25,
+    "layer": 8,
+    "budget": 0.1,
+    "MRR": 0.5416116762888409,
+    "latency_per_query_ms": 59.66153899984702,
+    "peak_gpu_mem_mb": 1450.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 0.25,
+    "layer": 8,
+    "budget": 0.2,
+    "MRR": 0.5379312801191163,
+    "latency_per_query_ms": 105.51549976124798,
+    "peak_gpu_mem_mb": 2750.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 0.5,
+    "layer": 8,
+    "budget": 0.01,
+    "MRR": 0.5166907876241488,
+    "latency_per_query_ms": 19.080391238388682,
+    "peak_gpu_mem_mb": 280.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 0.5,
+    "layer": 8,
+    "budget": 0.05,
+    "MRR": 0.5399755451271224,
+    "latency_per_query_ms": 37.665631715701785,
+    "peak_gpu_mem_mb": 800.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 0.5,
+    "layer": 8,
+    "budget": 0.1,
+    "MRR": 0.5398143410233363,
+    "latency_per_query_ms": 59.76041288107736,
+    "peak_gpu_mem_mb": 1450.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 0.5,
+    "layer": 8,
+    "budget": 0.2,
+    "MRR": 0.5348037933759193,
+    "latency_per_query_ms": 104.44683251299699,
+    "peak_gpu_mem_mb": 2750.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 0.75,
+    "layer": 8,
+    "budget": 0.01,
+    "MRR": 0.4953562400285708,
+    "latency_per_query_ms": 19.9062629111971,
+    "peak_gpu_mem_mb": 280.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 0.75,
+    "layer": 8,
+    "budget": 0.05,
+    "MRR": 0.517003532897892,
+    "latency_per_query_ms": 37.46399493920983,
+    "peak_gpu_mem_mb": 800.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 0.75,
+    "layer": 8,
+    "budget": 0.1,
+    "MRR": 0.5163548802453949,
+    "latency_per_query_ms": 60.180818012523815,
+    "peak_gpu_mem_mb": 1450.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 0.75,
+    "layer": 8,
+    "budget": 0.2,
+    "MRR": 0.514538036566466,
+    "latency_per_query_ms": 105.18069780275421,
+    "peak_gpu_mem_mb": 2750.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 1.0,
+    "layer": 8,
+    "budget": 0.01,
+    "MRR": 0.460564643655814,
+    "latency_per_query_ms": 19.482086980445025,
+    "peak_gpu_mem_mb": 280.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 1.0,
+    "layer": 8,
+    "budget": 0.05,
+    "MRR": 0.4818219025043753,
+    "latency_per_query_ms": 36.19012744795513,
+    "peak_gpu_mem_mb": 800.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 1.0,
+    "layer": 8,
+    "budget": 0.1,
+    "MRR": 0.4817009926495342,
+    "latency_per_query_ms": 60.04352353411909,
+    "peak_gpu_mem_mb": 1450.0
+  },
+  {
+    "alpha": 0.45,
+    "beta": 1.0,
+    "layer": 8,
+    "budget": 0.2,
+    "MRR": 0.47601243108539915,
+    "latency_per_query_ms": 105.04588038826775,
+    "peak_gpu_mem_mb": 2750.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 0.0,
+    "layer": 8,
+    "budget": 0.01,
+    "MRR": 0.5243571125715117,
+    "latency_per_query_ms": 5.0,
+    "peak_gpu_mem_mb": 280.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 0.0,
+    "layer": 8,
+    "budget": 0.05,
+    "MRR": 0.5454817297817264,
+    "latency_per_query_ms": 23.23894702237076,
+    "peak_gpu_mem_mb": 800.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 0.0,
+    "layer": 8,
+    "budget": 0.1,
+    "MRR": 0.5464982429564155,
+    "latency_per_query_ms": 44.5957531985534,
+    "peak_gpu_mem_mb": 1450.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 0.0,
+    "layer": 8,
+    "budget": 0.2,
+    "MRR": 0.5433287511096597,
+    "latency_per_query_ms": 90.45770105885104,
+    "peak_gpu_mem_mb": 2750.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 0.25,
+    "layer": 8,
+    "budget": 0.01,
+    "MRR": 0.5235132674331133,
+    "latency_per_query_ms": 7.235119898116481,
+    "peak_gpu_mem_mb": 280.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 0.25,
+    "layer": 8,
+    "budget": 0.05,
+    "MRR": 0.5459686449905329,
+    "latency_per_query_ms": 25.54853877467402,
+    "peak_gpu_mem_mb": 800.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 0.25,
+    "layer": 8,
+    "budget": 0.1,
+    "MRR": 0.5456723378534023,
+    "latency_per_query_ms": 47.64897345306132,
+    "peak_gpu_mem_mb": 1450.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 0.25,
+    "layer": 8,
+    "budget": 0.2,
+    "MRR": 0.5405364850518679,
+    "latency_per_query_ms": 92.80394592343391,
+    "peak_gpu_mem_mb": 2750.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 0.5,
+    "layer": 8,
+    "budget": 0.01,
+    "MRR": 0.5222610552721799,
+    "latency_per_query_ms": 7.648060138532288,
+    "peak_gpu_mem_mb": 280.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 0.5,
+    "layer": 8,
+    "budget": 0.05,
+    "MRR": 0.5437654128666249,
+    "latency_per_query_ms": 25.50255672832123,
+    "peak_gpu_mem_mb": 800.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 0.5,
+    "layer": 8,
+    "budget": 0.1,
+    "MRR": 0.5445793546772347,
+    "latency_per_query_ms": 47.29231462897479,
+    "peak_gpu_mem_mb": 1450.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 0.5,
+    "layer": 8,
+    "budget": 0.2,
+    "MRR": 0.5401977227307784,
+    "latency_per_query_ms": 92.82864274173662,
+    "peak_gpu_mem_mb": 2750.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 0.75,
+    "layer": 8,
+    "budget": 0.01,
+    "MRR": 0.49940405085681455,
+    "latency_per_query_ms": 7.419357144166995,
+    "peak_gpu_mem_mb": 280.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 0.75,
+    "layer": 8,
+    "budget": 0.05,
+    "MRR": 0.5211745778128318,
+    "latency_per_query_ms": 26.443092950605266,
+    "peak_gpu_mem_mb": 800.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 0.75,
+    "layer": 8,
+    "budget": 0.1,
+    "MRR": 0.5219255540842338,
+    "latency_per_query_ms": 48.128775195361385,
+    "peak_gpu_mem_mb": 1450.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 0.75,
+    "layer": 8,
+    "budget": 0.2,
+    "MRR": 0.5179734861245509,
+    "latency_per_query_ms": 92.04061439235048,
+    "peak_gpu_mem_mb": 2750.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 1.0,
+    "layer": 8,
+    "budget": 0.01,
+    "MRR": 0.4664632421124853,
+    "latency_per_query_ms": 7.5301151049705135,
+    "peak_gpu_mem_mb": 280.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 1.0,
+    "layer": 8,
+    "budget": 0.05,
+    "MRR": 0.48630154734233366,
+    "latency_per_query_ms": 25.40381951760944,
+    "peak_gpu_mem_mb": 800.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 1.0,
+    "layer": 8,
+    "budget": 0.1,
+    "MRR": 0.4858313219623805,
+    "latency_per_query_ms": 47.98264411514738,
+    "peak_gpu_mem_mb": 1450.0
+  },
+  {
+    "alpha": 0.85,
+    "beta": 1.0,
+    "layer": 8,
+    "budget": 0.2,
+    "MRR": 0.4837519330326868,
+    "latency_per_query_ms": 93.57141140725751,
+    "peak_gpu_mem_mb": 2750.0
+  }
+]

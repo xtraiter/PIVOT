@@ -88,7 +88,11 @@ class DataLoader(Dataset):
             obj[answer[idx]] = 1
                     
         # subgraph sampling
-        subgraph = self.getOneSubgraph(int(sub))
+        if self.mode == 'train':
+            sub_id, rel_id = self.train_data[idx][0], self.train_data[idx][1]
+        else:
+            sub_id, rel_id = int(sub.item()), int(rel.item())
+        subgraph = self.getOneSubgraph(sub_id, rel_id)
         return sub, rel, obj, subgraph
         
     def collate_fn(self, data):

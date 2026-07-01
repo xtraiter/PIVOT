@@ -11,6 +11,22 @@ from tqdm import tqdm
 from scipy.sparse import csr_matrix, coo_matrix
 from collections import defaultdict
 
+def get_hop_distances(adj, u, max_hops=3):
+    dist = {u: 0}
+    queue = [u]
+    head = 0
+    while head < len(queue):
+        curr = queue[head]
+        head += 1
+        curr_dist = dist[curr]
+        if curr_dist >= max_hops:
+            continue
+        for neighbor in adj[curr]:
+            if neighbor not in dist:
+                dist[neighbor] = curr_dist + 1
+                queue.append(neighbor)
+    return dist
+
 def checkPath(path):
     if not os.path.exists(path):
         os.mkdir(path)
@@ -143,6 +159,40 @@ class pprSampler():
         del tmp_adj; del tmp_degree
         '''
         
+        if hasattr(self.args, 'use_learned_pruning') and self.args.use_learned_pruning:
+            print("==> Initializing MLP Pruning components in sampler...")
+            self.adj = defaultdict(list)
+            for h, t in homoEdges:
+                self.adj[int(h)].append(int(t))
+                self.adj[int(t)].append(int(h))
+
+            self.degrees = torch.zeros(self.n_ent)
+            for i in range(self.n_ent):
+                self.degrees[i] = len(self.adj[i])
+
+            self.direct_edges_set = set()
+            for h, r, t in edge_index:
+                self.direct_edges_set.add((int(h), int(r), int(t)))
+
+            tail_freq = np.zeros((self.n_ent, 2 * self.n_rel + 2), dtype=np.float32)
+            for h, r, t in edge_index:
+                tail_freq[int(t), int(r)] += 1.0
+            rel_total = tail_freq.sum(axis=0, keepdims=True)
+            self.tail_freq_norm = torch.tensor(tail_freq / (rel_total + 1e-8))
+
+            rel_counts = np.zeros((self.n_ent, 2 * self.n_rel + 2), dtype=np.float32)
+            for h, r, t in edge_index:
+                rel_counts[int(h), int(r)] += 1.0
+            row_sums = rel_counts.sum(axis=1, keepdims=True)
+            self.rel_dist = torch.tensor(rel_counts / (row_sums + 1e-8))
+
+            from learned_pruning import PruningMLP
+            self.pruning_model = PruningMLP(in_dim=7, hidden=64)
+            if hasattr(self.args, 'pruning_model_path') and self.args.pruning_model_path:
+                print(f"==> Loading learned pruning model from: {self.args.pruning_model_path}")
+                self.pruning_model.load_state_dict(torch.load(self.args.pruning_model_path, map_location='cpu'))
+            self.pruning_model.eval()
+
         print('==> finish sampler initilization.')
 
     def updateEdges(self, edge_index):
@@ -183,25 +233,90 @@ class pprSampler():
         graph.add_edges_from(edges)
         return graph
     
-    def sampleSubgraph(self, ent: int, cand=None):    
+    def build_features_for_inference(self, u, q, candidate_ids, ppr_scores):
+        N = candidate_ids.numel()
+        cids_cpu = candidate_ids.cpu()
+
+        ppr_log = torch.log(ppr_scores + 1e-8)
+
+        order = torch.argsort(-ppr_scores)
+        ranks = torch.empty(N, device=ppr_scores.device)
+        ranks[order] = torch.arange(N, dtype=torch.float32, device=ppr_scores.device)
+        ppr_rank_pct = 1.0 - ranks / max(N - 1, 1)
+
+        deg_log = torch.log1p(self.degrees[cids_cpu]).to(ppr_scores.device)
+
+        hop_dist = torch.full((N,), 4.0, device=ppr_scores.device)
+        bfs_dists = get_hop_distances(self.adj, u, max_hops=3)
+        for i, cid in enumerate(cids_cpu.tolist()):
+            if cid in bfs_dists:
+                hop_dist[i] = float(bfs_dists[cid])
+
+        is_direct = torch.zeros(N, device=ppr_scores.device)
+        for i, cid in enumerate(cids_cpu.tolist()):
+            if (u, q, cid) in self.direct_edges_set:
+                is_direct[i] = 1.0
+
+        tail_freq_q = self.tail_freq_norm[cids_cpu, q].to(ppr_scores.device)
+        rel_match = self.rel_dist[cids_cpu, q].to(ppr_scores.device)
+
+        feats = torch.stack([
+            ppr_log, ppr_rank_pct, deg_log, hop_dist,
+            is_direct, tail_freq_q, rel_match
+        ], dim=1)
+
+        feats = (feats - feats.mean(0, keepdim=True)) / (feats.std(0, keepdim=True) + 1e-6)
+        return feats
+
+    def sampleSubgraph(self, ent: int, rel: int = None, cand=None):    
         # sample subgraph to get the edges
         if hasattr(self, 'use_in_memory_ppr') and self.use_in_memory_ppr:
             ppr_scores = self.all_ppr_scores[ent]
         else:
             ppr_scores = np.array(list(self.getPPRscores(ent).values()))
         
-        # gurantee the candidates are sampled
-        if cand != None and self.topk < self.n_ent:
-            tmp_ppr_scores = copy.deepcopy(ppr_scores)
-            tmp_ppr_scores[cand] = 1e8
-            topk_nodes = sorted(list(set([ent] + np.argsort(tmp_ppr_scores)[::-1][:self.topk].tolist())))
+        # Use learned pruning if enabled
+        if hasattr(self.args, 'use_learned_pruning') and self.args.use_learned_pruning and self.topk < self.n_ent:
+            if rel is None:
+                raise ValueError("Learned pruning requires query relation 'rel' during sampling!")
+            
+            # Determine candidate pool size (must be larger than target budget topk)
+            pool_size = int(0.10 * self.n_ent)
+            pool_size = max(pool_size, self.topk * 3)
+            pool_size = min(pool_size, self.n_ent)
+
+            # Extract candidate pool from top-pool_size PPR entities
+            candidate_ids_np = np.argsort(ppr_scores)[::-1][:pool_size].copy()
+            candidate_ids = torch.tensor(candidate_ids_np)
+            ppr_scores_subset = torch.tensor(ppr_scores[candidate_ids_np])
+
+            feats = self.build_features_for_inference(ent, rel, candidate_ids, ppr_scores_subset)
+            with torch.no_grad():
+                mlp_scores = self.pruning_model(feats)
+
+            # Hybrid Subgraph Selection (Lựa chọn A): 50% MLP + 50% PPR
+            k_mlp = min(self.topk // 2, candidate_ids.numel())
+            _, topk_idx = torch.topk(mlp_scores, k_mlp)
+            selected_nodes_mlp = candidate_ids[topk_idx].tolist()
+
+            # Select top PPR nodes to preserve dense relational reasoning paths
+            k_ppr = self.topk - len(selected_nodes_mlp)
+            selected_nodes_ppr = np.argsort(ppr_scores)[::-1][:k_ppr].tolist()
+
+            topk_nodes = sorted(list(set([ent] + selected_nodes_mlp + selected_nodes_ppr)))
         else:
-            # topk sampling
-            if self.topk < self.n_ent:    
-                topk_nodes = sorted(list(set([ent] + np.argsort(ppr_scores)[::-1][:self.topk].tolist())))
+            # guarantee the candidates are sampled
+            if cand != None and self.topk < self.n_ent:
+                tmp_ppr_scores = copy.deepcopy(ppr_scores)
+                tmp_ppr_scores[cand] = 1e8
+                topk_nodes = sorted(list(set([ent] + np.argsort(tmp_ppr_scores)[::-1][:self.topk].tolist())))
             else:
-                # no sampling
-                topk_nodes = list(range(self.n_ent))
+                # topk sampling
+                if self.topk < self.n_ent:    
+                    topk_nodes = sorted(list(set([ent] + np.argsort(ppr_scores)[::-1][:self.topk].tolist())))
+                else:
+                    # no sampling
+                    topk_nodes = list(range(self.n_ent))
 
         # get candididate edges
         selectd_edges = self.sparseTrainMatrix[topk_nodes, :]	
@@ -246,8 +361,8 @@ class pprSampler():
         
         return topk_nodes, node_index, sampled_edges
 
-    def getOneSubgraph(self, head: int, cand=None):
-        topk_nodes, node_index, sampled_edges = self.sampleSubgraph(head, cand) 
+    def getOneSubgraph(self, head: int, rel: int = None, cand=None):
+        topk_nodes, node_index, sampled_edges = self.sampleSubgraph(head, rel, cand) 
         return [head, topk_nodes, node_index, sampled_edges]
         
     def getBatchSubgraph(self, subgraph_list: list):  

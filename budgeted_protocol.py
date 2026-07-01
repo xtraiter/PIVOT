@@ -65,7 +65,8 @@ def run_one(data_path, weight, gpu, topk, batchsize=16, extra_args=None,
 
 def run_budget_sweep(data_path, weight, gpu, budgets, n_queries, seeds=(0,),
                       batchsize=16, out_csv="budget_results.csv",
-                      train_script="train_auto.py"):
+                      train_script="train_auto.py", use_mlp_pruning=False,
+                      dataset_name="WN18RR"):
     """
     Chay CUNG MOT checkpoint qua nhieu muc budget (va nhieu seed, neu eval
     co thanh phan stochastic -- thuong dropout da tat khi eval nen 1 seed
@@ -73,7 +74,10 @@ def run_budget_sweep(data_path, weight, gpu, budgets, n_queries, seeds=(0,),
     """
     rows = []
     for seed in seeds:
-        extra = ["--seed", str(seed)] if seed is not None else None
+        extra = ["--seed", str(seed)] if seed is not None else []
+        if use_mlp_pruning:
+            pruning_model_path = f"data/{dataset_name}/budget_results/pruning_mlp_v2_best_seed_{seed}.pt"
+            extra += ["--use_learned_pruning", "--pruning_model_path", pruning_model_path]
         for b in budgets:
             print(f"[budgeted_protocol] dang chay budget={b} seed={seed} ...")
             r = run_one(data_path, weight, gpu, b, batchsize, extra, train_script)
@@ -203,6 +207,7 @@ if __name__ == "__main__":
         "--train_script", default="train_auto.py",
         help="duong dan train_auto.py cua repo goc (neu khong chay tu repo root)",
     )
+    ap.add_argument("--use_mlp_pruning", action="store_true", help="Use MLP pruning during evaluation")
     args = ap.parse_args()
 
     outdir = Path(args.outdir)
@@ -213,6 +218,8 @@ if __name__ == "__main__":
         args.n_queries, args.seeds, args.batchsize,
         out_csv=str(outdir / "raw_results.csv"),
         train_script=args.train_script,
+        use_mlp_pruning=args.use_mlp_pruning,
+        dataset_name=args.dataset,
     )
     summary = summarize(df, out_csv=str(outdir / "summary.csv"), dataset_name=args.dataset, method_name=args.method)
     plot_pareto(summary, out_png=str(outdir / "pareto_frontier.png"))
