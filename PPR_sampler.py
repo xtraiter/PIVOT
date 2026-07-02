@@ -132,19 +132,25 @@ class pprSampler():
         self.ppr_cache = {}
         # Pre-load all PPR scores in memory to avoid extremely slow disk I/O / unpickling during training
         if self.n_ent <= 50000:
-            print(f"==> Pre-loading all {self.n_ent} PPR scores into memory for split '{split}'...")
-            self.all_ppr_scores = np.zeros((self.n_ent, self.n_ent), dtype=np.float32)
-            
-            import multiprocessing
-            from functools import partial
-            num_loader_workers = min(32, multiprocessing.cpu_count())
-            worker_func = partial(_load_one_ppr, ppr_save_path=self.ppr_savePath)
-            
-            with multiprocessing.Pool(processes=num_loader_workers) as pool:
-                for h, scores in tqdm(pool.imap_unordered(worker_func, range(self.n_ent), chunksize=200), total=self.n_ent, desc="Loading PPR scores", ncols=50, leave=False):
-                    if scores is not None:
-                        for k, v in scores.items():
-                            self.all_ppr_scores[h, k] = v
+            if not hasattr(pprSampler, '_global_ppr_scores') or pprSampler._global_ppr_scores is None:
+                print(f"==> Pre-loading all {self.n_ent} PPR scores into memory...")
+                ppr_scores_matrix = np.zeros((self.n_ent, self.n_ent), dtype=np.float32)
+                
+                import multiprocessing
+                from functools import partial
+                num_loader_workers = min(32, multiprocessing.cpu_count())
+                worker_func = partial(_load_one_ppr, ppr_save_path=self.ppr_savePath)
+                
+                with multiprocessing.Pool(processes=num_loader_workers) as pool:
+                    for h, scores in tqdm(pool.imap_unordered(worker_func, range(self.n_ent), chunksize=200), total=self.n_ent, desc="Loading PPR scores", ncols=50, leave=False):
+                        if scores is not None:
+                            for k, v in scores.items():
+                                ppr_scores_matrix[h, k] = v
+                pprSampler._global_ppr_scores = ppr_scores_matrix
+            else:
+                print(f"==> Re-using pre-loaded PPR scores from memory cache for split '{split}'")
+                
+            self.all_ppr_scores = pprSampler._global_ppr_scores
             self.use_in_memory_ppr = True
         else:
             self.use_in_memory_ppr = False
