@@ -1,19 +1,16 @@
 import torch
 import torch.nn as nn
 from torch_scatter import scatter
-import torch.nn.functional as F
-from torch.utils.checkpoint import checkpoint
 
 class GNNLayer(torch.nn.Module):
-    def __init__(self, in_dim, out_dim, attn_dim, n_rel, act=lambda x:x, add_manual_edges=False):
+    def __init__(self, in_dim, out_dim, attn_dim, n_rel, act=lambda x:x):
         super(GNNLayer, self).__init__()
         self.n_rel = n_rel
         self.in_dim = in_dim
         self.out_dim = out_dim
         self.attn_dim = attn_dim
         self.act = act
-        n_embed = 2*n_rel+3 if add_manual_edges else 2*n_rel+1
-        self.rela_embed = nn.Embedding(n_embed, in_dim)
+        self.rela_embed = nn.Embedding(2*n_rel+1, in_dim)
         self.Ws_attn = nn.Linear(in_dim, attn_dim, bias=False)
         self.Wr_attn = nn.Linear(in_dim, attn_dim, bias=False)
         self.Wqr_attn = nn.Linear(in_dim, attn_dim)
@@ -25,19 +22,13 @@ class GNNLayer(torch.nn.Module):
         sub = edges[:,0]
         rel = edges[:,1]
         obj = edges[:,2]
-        
-        # Mathematically equivalent projection optimizations to save massive GPU memory
-        ws_proj = self.Ws_attn(hidden)[sub]
-        wr_weight = self.Wr_attn(self.rela_embed.weight)
-        wr_proj = F.embedding(rel, wr_weight)
-        wqr_proj = self.Wqr_attn(self.rela_embed(q_rel))[r_idx]
+        hs = hidden[sub]
+        hr = self.rela_embed(rel) # relation embedding of each edge
+        h_qr = self.rela_embed(q_rel)[r_idx] # use batch_idx to get the query relation
         
         # message aggregation
-        alpha = torch.sigmoid(self.w_alpha(nn.ReLU()(ws_proj + wr_proj + wqr_proj)))
-        
-        hs = hidden[sub]
-        hr = self.rela_embed(rel)
         message = hs * hr
+        alpha = torch.sigmoid(self.w_alpha(nn.ReLU()(self.Ws_attn(hs) + self.Wr_attn(hr) + self.Wqr_attn(h_qr))))
         message = alpha * message        
         message_agg = scatter(message, index=obj, dim=0, dim_size=n_node, reduce='sum') #ori
         
@@ -47,24 +38,6 @@ class GNNLayer(torch.nn.Module):
         if shortcut: hidden_new = hidden_new + hidden
         
         return hidden_new
-
-class PropagationCell(nn.Module):
-    def __init__(self, gnn_layer, gate, dropout, shortcut):
-        super(PropagationCell, self).__init__()
-        self.gnn_layer = gnn_layer
-        self.gate = gate
-        self.dropout = dropout
-        self.shortcut = shortcut
-
-    def forward(self, hidden, h0, q_sub, q_rel, edge_batch_idxs, batch_sampled_edges, n_node):
-        hidden = self.gnn_layer(q_sub, q_rel, edge_batch_idxs, hidden, batch_sampled_edges, n_node, shortcut=self.shortcut)
-        act_signal = (hidden.sum(-1) == 0).detach().int()
-        hidden = self.dropout(hidden)
-        hidden, h0 = self.gate(hidden.unsqueeze(0), h0)
-        hidden = hidden.squeeze(0)
-        hidden = hidden * (1-act_signal).unsqueeze(-1)
-        h0 = h0 * (1-act_signal).unsqueeze(-1).unsqueeze(0)
-        return hidden, h0
 
 class GNN_auto(torch.nn.Module):
     def __init__(self, params, loader):
@@ -79,21 +52,14 @@ class GNN_auto(torch.nn.Module):
         acts = {'relu': nn.ReLU(), 'tanh': torch.tanh, 'idd': lambda x:x}
         act = acts[params.act]
 
-        add_manual_edges = getattr(params, 'add_manual_edges', False)
         self.gnn_layers = []
         for i in range(self.n_layer):
-            self.gnn_layers.append(GNNLayer(self.hidden_dim, self.hidden_dim, self.attn_dim, self.n_rel, act=act, add_manual_edges=add_manual_edges))
+            self.gnn_layers.append(GNNLayer(self.hidden_dim, self.hidden_dim, self.attn_dim, self.n_rel, act=act))
         self.gnn_layers = nn.ModuleList(self.gnn_layers)
         self.dropout = nn.Dropout(params.dropout)
         self.gate = nn.GRU(self.hidden_dim, self.hidden_dim)
         
-        self.cells = nn.ModuleList([
-            PropagationCell(self.gnn_layers[i], self.gate, self.dropout, params.shortcut)
-            for i in range(self.n_layer)
-        ])
-        
-        n_query_embed = 2*self.n_rel+3 if add_manual_edges else 2*self.n_rel+1
-        if self.params.initializer == 'relation': self.query_rela_embed = nn.Embedding(n_query_embed, self.hidden_dim)
+        if self.params.initializer == 'relation': self.query_rela_embed = nn.Embedding(2*self.n_rel+1, self.hidden_dim)
         if self.params.readout == 'linear':
             if self.params.concatHidden:
                 self.W_final = nn.Linear(self.hidden_dim * (self.n_layer+1), 1, bias=False)
@@ -119,17 +85,18 @@ class GNN_auto(torch.nn.Module):
         
         # propagation
         for i in range(self.n_layer):
-            if self.training:
-                # Use gradient checkpointing to save VRAM during training
-                hidden, h0 = checkpoint(
-                    self.cells[i],
-                    hidden, h0, q_sub, q_rel, edge_batch_idxs, batch_sampled_edges, n_node,
-                    use_reentrant=False
-                )
-            else:
-                hidden, h0 = self.cells[i](
-                    hidden, h0, q_sub, q_rel, edge_batch_idxs, batch_sampled_edges, n_node
-                )
+            # forward
+            hidden = self.gnn_layers[i](q_sub, q_rel, edge_batch_idxs, hidden, batch_sampled_edges, n_node,
+                                        shortcut=self.params.shortcut)
+            
+            # act_signal is a binary (0/1) tensor 
+            # that 1 for non-activated entities and 0 for activated entities
+            act_signal = (hidden.sum(-1) == 0).detach().int()
+            hidden = self.dropout(hidden)
+            hidden, h0 = self.gate(hidden.unsqueeze(0), h0)
+            hidden = hidden.squeeze(0)
+            hidden = hidden * (1-act_signal).unsqueeze(-1)
+            h0 = h0 * (1-act_signal).unsqueeze(-1).unsqueeze(0)
             
             if self.params.concatHidden: hidden_list.append(hidden)
 

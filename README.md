@@ -80,7 +80,7 @@ Result:
 
 WN18RR dataset:
 ```
-python3 train_auto.py --data_path ./data/WN18RR/ --batchsize 16 --gpu 0 --topk 0.1 --topm -1 --fact_ratio 0.95 --seed 456
+python3 train_auto.py --data_path ./data/WN18RR/ --batchsize 16 --gpu 0 --topk 0.1 --topm -1 --fact_ratio 0.95 
 ```
 
 NELL995 dataset:

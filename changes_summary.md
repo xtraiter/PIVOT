@@ -2294,3 +2294,68 @@ graph TD
     orig4 -.-> opt4
     orig5 -.-> opt5
 ```
+
+---
+
+## IV. HOÀN NGUYÊN MÃ NGUỒN (REVERT FOR BASELINE) — 2026-07-01
+
+Phiên làm việc này hoàn nguyên **model.py** và **base_model.py** về code gốc của paper để huấn luyện NELL995 làm **mốc cơ sở (baseline)** nhằm so sánh trước/sau cải tiến.
+
+### Mục đích
+- Lấy kết quả huấn luyện NELL995 không có cải tiến làm baseline.
+- Sau khi có kết quả baseline, sẽ áp dụng lại 2 cải tiến dưới đây và so sánh.
+
+### Các cải tiến đã TẠM THỜI hoàn nguyên (sẽ tái áp dụng sau)
+
+#### 1. model.py — Hoàn nguyên Gradient Checkpointing
+```diff
+- # PropagationCell wrapper + checkpoint() call
++ # Original inline propagation loop (no PropagationCell)
+  for i in range(self.n_layer):
+-     if self.training:
+-         hidden, h0 = checkpoint(self.cells[i], hidden, h0, ...)
+-     else:
+-         hidden, h0 = self.cells[i](hidden, h0, ...)
++     hidden = self.gnn_layers[i](q_sub, q_rel, edge_batch_idxs, hidden, ...)
++     act_signal = (hidden.sum(-1) == 0).detach().int()
++     hidden = self.dropout(hidden)
++     hidden, h0 = self.gate(hidden.unsqueeze(0), h0)
++     hidden = hidden.squeeze(0)
++     hidden = hidden * (1-act_signal).unsqueeze(-1)
++     h0 = h0 * (1-act_signal).unsqueeze(-1).unsqueeze(0)
+```
+
+#### 2. model.py — Hoàn nguyên Attention Projection Optimization
+```diff
+- # Optimized: project full embedding matrix first, then index
+- ws_proj = self.Ws_attn(hidden)[sub]
+- wr_weight = self.Wr_attn(self.rela_embed.weight)
+- wr_proj = F.embedding(rel, wr_weight)
+- wqr_proj = self.Wqr_attn(self.rela_embed(q_rel))[r_idx]
+- alpha = torch.sigmoid(self.w_alpha(nn.ReLU()(ws_proj + wr_proj + wqr_proj)))
+- hs = hidden[sub]
+- hr = self.rela_embed(rel)
++ # Original: index first, then project
++ hs = hidden[sub]
++ hr = self.rela_embed(rel)
++ h_qr = self.rela_embed(q_rel)[r_idx]
++ alpha = torch.sigmoid(self.w_alpha(nn.ReLU()(self.Ws_attn(hs) + self.Wr_attn(hr) + self.Wqr_attn(h_qr))))
+```
+
+#### 3. base_model.py — Hoàn nguyên AMP FP16 + Profiling logs
+```diff
+- # AMP autocast + GradScaler
+- with torch.amp.autocast('cuda'):
+-     scores = self.model(...)
+- self.scaler.scale(loss).backward()
+- self.scaler.step(self.optimizer)
++ # Original: plain forward + backward
++ scores = self.model(...)
++ loss.backward()
++ self.optimizer.step()
+
+- # Removed: detailed latency/peak-memory logging
+- # Removed: worker_init_fn
+- # Removed: pin_memory=False
++ # Restored: pin_memory=True, original DataLoader settings
+```
