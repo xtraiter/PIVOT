@@ -927,7 +927,7 @@ Dưới đây là chi tiết các thay đổi từ mức biến số đến mứ
  *   **Tích hợp Learned Pruning (MLP) & Lấy mẫu lai (Hybrid Sampler)**
  ```diff
  @@ -71,6 +159,40 @@
- +        if hasattr(self.args, 'use_learned_pruning') and self.args.use_learned_pruning:
+ +        if (hasattr(self.args, 'use_learned_pruning') and self.args.use_learned_pruning) or (hasattr(self.args, 'rerank_alpha') and self.args.rerank_alpha > 0):
  +            print("==> Initializing MLP Pruning components in sampler...")
  +            self.adj = defaultdict(list)
  +            for h, t in homoEdges:
@@ -1212,6 +1212,41 @@ index 2aadd70..7048b13 100644
 +        if torch.cuda.is_available():
 +            torch.cuda.reset_peak_memory_stats()
 +
++    def _post_hoc_rerank(self, scores, subs, rels, subgraph_data):
++        if hasattr(self.args, 'rerank_alpha') and self.args.rerank_alpha > 0:
++            batch_idxs_cpu = subgraph_data[0].cpu()
++            abs_idxs_cpu = subgraph_data[1].cpu()
++            rels_cpu = rels.cpu()
++            subs_cpu = subs.cpu()
++            
++            mlp_scores_full = torch.zeros_like(torch.from_numpy(scores))  # [n_query, n_ent]
++            
++            for i in range(len(rels_cpu)):
++                mask = (batch_idxs_cpu == i)
++                entity_ids = abs_idxs_cpu[mask]
++                if len(entity_ids) == 0:
++                    continue
++                q_rel = int(rels_cpu[i])
++                q_sub = int(subs_cpu[i])
++                
++                ppr_scores_i = torch.tensor(
++                    self.test_sampler.all_ppr_scores[q_sub, entity_ids.numpy()]
++                )
++                feats = self.test_sampler.build_features_for_inference(
++                    q_sub, q_rel, entity_ids, ppr_scores_i
++                )
++                
++                with torch.no_grad():
++                    mlp_s = self.test_sampler.pruning_model(feats).cpu()
++                
++                # Normalize to [0, 1]
++                mlp_s = (mlp_s - mlp_s.min()) / (mlp_s.max() - mlp_s.min() + 1e-8)
++                mlp_scores_full[i, entity_ids] = mlp_s
++            
++            alpha = self.args.rerank_alpha
++            scores = (1 - alpha) * scores + alpha * mlp_scores_full.numpy()
++        return scores
++
      def saveModelToFiles(self, args, best_metric, deleteLastFile=True):
 +        suffix = '_mlp' if (hasattr(args, 'use_learned_pruning') and args.use_learned_pruning) else ''
          if args.val_num == -1:
@@ -1320,6 +1355,7 @@ index 2aadd70..7048b13 100644
 +                fwd_t0 = time.perf_counter()
 +                with torch.amp.autocast('cuda'):
 +                    scores = self.model(subs, rels, subgraph_data, mode='valid').float().data.cpu().numpy()
++                scores = self._post_hoc_rerank(scores, subs, rels, subgraph_data)
 +                if torch.cuda.is_available():
 +                    torch.cuda.synchronize()
 +                forward_ms += (time.perf_counter() - fwd_t0) * 1000.0
@@ -1353,6 +1389,7 @@ index 2aadd70..7048b13 100644
 +                fwd_t0 = time.perf_counter()
 +                with torch.amp.autocast('cuda'):
 +                    scores = self.model(subs, rels, subgraph_data, mode='test').float().data.cpu().numpy()
++                scores = self._post_hoc_rerank(scores, subs, rels, subgraph_data)
 +                if torch.cuda.is_available():
 +                    torch.cuda.synchronize()
 +                forward_ms += (time.perf_counter() - fwd_t0) * 1000.0
@@ -1437,6 +1474,7 @@ index 71cfa17..02e85be 100644
  parser.add_argument('--not_shuffle_train', action='store_true')
 +parser.add_argument('--use_learned_pruning', action='store_true')
 +parser.add_argument('--pruning_model_path', type=str, default='')
++parser.add_argument('--rerank_alpha', type=float, default=0.0)
  args = parser.parse_args()
  
  class Options(object):
