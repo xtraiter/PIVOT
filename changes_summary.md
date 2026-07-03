@@ -2359,3 +2359,34 @@ Phiên làm việc này hoàn nguyên **model.py** và **base_model.py** về co
 - # Removed: pin_memory=False
 + # Restored: pin_memory=True, original DataLoader settings
 ```
+
+---
+
+## V. TỐI ƯU HÓA BỘ NHỚ ĐỆM PPR (PPR MEMORY CACHING OPTIMIZATION) — 2026-07-02
+
+### Thay đổi trong `PPR_sampler.py`
+Tăng ngưỡng tối đa để nạp toàn bộ điểm PPR vào bộ nhớ RAM (`use_in_memory_ppr`) từ **50,000** lên **80,000**:
+```diff
+-        if self.n_ent <= 50000:
++        if self.n_ent <= 80000:
+```
+
+### Mục đích & Tác động
+- **Mục đích**: Hỗ trợ tập dữ liệu **NELL995** (`n_ent = 74,536`) được nạp trực tiếp toàn bộ điểm PPR vào RAM lúc khởi tạo (trước đây chỉ áp dụng cho WN18RR).
+- **Tác động**: Tránh việc đọc file pickle `.pkl` từ đĩa và parse sang numpy array liên tục cho mỗi mẫu huấn luyện. Kết hợp với tăng `--cpu` của DataLoader, tốc độ chạy 1 epoch huấn luyện dự kiến giảm từ **50 phút** xuống còn **3-5 phút** mà không làm tăng đáng kể mức tiêu thụ RAM thực tế nhờ cơ chế CoW (Copy-on-Write) của Linux.
+
+### Chia sẻ tài nguyên nạp sẵn (Shared PPR Caching across Samplers)
+- **Thay đổi**: Thêm tham số `preloaded_ppr` vào `pprSampler.__init__` và truyền từ `test_sampler` sang `train_sampler` trong `train_auto.py`:
+```diff
+# Trong PPR_sampler.py
+-    def __init__(self, n_ent:int, n_rel:int, topk:int, topm:int, homoEdges:list, edge_index:list, data_path:str, split='train', args=None):
++    def __init__(self, n_ent:int, n_rel:int, topk:int, topm:int, homoEdges:list, edge_index:list, data_path:str, split='train', args=None, preloaded_ppr=None):
+
+# Trong train_auto.py
++    preloaded_ppr = getattr(test_sampler, 'all_ppr_scores', None)
+     train_sampler = pprSampler(loader.n_ent, loader.n_rel, args.n_samp_ent, args.n_samp_edge,
+-        fact_homo_edges, fact_data, args.data_path, split='train', args=args)
++        fact_homo_edges, fact_data, args.data_path, split='train', args=args, preloaded_ppr=preloaded_ppr)
+```
+- **Tác động**: Rút ngắn thời gian khởi tạo đi một nửa (giảm 20 phút tải file pickle lặp lại không cần thiết khi khởi tạo train sampler).
+

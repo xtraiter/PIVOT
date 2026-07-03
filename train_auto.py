@@ -47,7 +47,7 @@ parser.add_argument('--val_num', type=int, default=-1) # how many triples are us
 parser.add_argument('--epoch', type=int, default=200)
 parser.add_argument('--layer', type=int, default=6)
 parser.add_argument('--batchsize', type=int, default=16)
-parser.add_argument('--cpu', type=int, default=8)
+parser.add_argument('--cpu', type=int, default=1)
 parser.add_argument('--weight', type=str, default='')
 parser.add_argument('--add_manual_edges', action='store_true')
 parser.add_argument('--remove_1hop_edges', action='store_true')
@@ -111,8 +111,9 @@ if __name__ == '__main__':
     # sampler for training
     fact_homo_edges = list(set([(h,t) for (h,r,t) in loader.fact_data]))
     fact_data = np.concatenate([np.array(loader.fact_data), loader.idd_data], 0)
+    preloaded_ppr = getattr(test_sampler, 'all_ppr_scores', None)
     train_sampler = pprSampler(loader.n_ent, loader.n_rel, args.n_samp_ent, args.n_samp_edge,
-        fact_homo_edges, fact_data, args.data_path, split='train', args=args)
+        fact_homo_edges, fact_data, args.data_path, split='train', args=args, preloaded_ppr=preloaded_ppr)
         
     del fact_homo_edges
         

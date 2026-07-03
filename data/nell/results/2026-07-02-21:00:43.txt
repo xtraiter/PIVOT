@@ -1,0 +1,13 @@
+Namespace(data_path='./data/nell', seed=1234, topk=0.1, topm=-1.0, gpu=0, fact_ratio=0.95, val_num=-1, epoch=200, layer=6, batchsize=8, cpu=8, weight='./data/nell/saveModel/topk_0.1_layer_8_ValMRR_0.489.pt', add_manual_edges=False, remove_1hop_edges=False, only_eval=False, not_shuffle_train=False, use_learned_pruning=False, pruning_model_path='', perf_file='./data/nell/results/2026-07-02-21:00:43.txt', n_batch=8, n_tbatch=8)
+[VALID] MRR:0.4544 H@1:0.3867 H@10:0.5737	 [TEST] MRR:0.5013 H@1:0.4372 H@10:0.6077 	[TIME] train:5574.1679 inference:342.5433
+[VALID] MRR:0.4713 H@1:0.4042 H@10:0.5810	 [TEST] MRR:0.5117 H@1:0.4524 H@10:0.6079 	[TIME] train:8354.2570 inference:350.3941
+[VALID] MRR:0.4680 H@1:0.4015 H@10:0.5792	 [TEST] MRR:0.5088 H@1:0.4462 H@10:0.6081 	[TIME] train:11135.9777 inference:340.3128
+[VALID] MRR:0.4726 H@1:0.4033 H@10:0.5902	 [TEST] MRR:0.5203 H@1:0.4537 H@10:0.6251 	[TIME] train:13918.4001 inference:337.3416
+[VALID] MRR:0.4688 H@1:0.4006 H@10:0.5856	 [TEST] MRR:0.5114 H@1:0.4450 H@10:0.6205 	[TIME] train:16693.0913 inference:327.9898
+[VALID] MRR:0.4756 H@1:0.4107 H@10:0.5847	 [TEST] MRR:0.5177 H@1:0.4530 H@10:0.6212 	[TIME] train:19474.4683 inference:335.2319
+[VALID] MRR:0.4759 H@1:0.4042 H@10:0.5856	 [TEST] MRR:0.5246 H@1:0.4629 H@10:0.6244 	[TIME] train:22248.5135 inference:334.5860
+[VALID] MRR:0.4835 H@1:0.4162 H@10:0.5948	 [TEST] MRR:0.5301 H@1:0.4684 H@10:0.6301 	[TIME] train:25023.4622 inference:336.8070
+[VALID] MRR:0.4899 H@1:0.4245 H@10:0.6096	 [TEST] MRR:0.5289 H@1:0.4656 H@10:0.6281 	[TIME] train:27796.2473 inference:336.5178
+[VALID] MRR:0.4866 H@1:0.4153 H@10:0.5985	 [TEST] MRR:0.5378 H@1:0.4741 H@10:0.6400 	[TIME] train:2772.4427 inference:311.0816
+[VALID] MRR:0.4924 H@1:0.4190 H@10:0.6225	 [TEST] MRR:0.5057 H@1:0.4290 H@10:0.6254 	[TIME] train:5542.8280 inference:312.0016
+[VALID] MRR:0.4916 H@1:0.4245 H@10:0.5976	 [TEST] MRR:0.5274 H@1:0.4649 H@10:0.6278 	[TIME] train:8312.1555 inference:317.6163

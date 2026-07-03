@@ -69,7 +69,7 @@ def _load_one_ppr(h, ppr_save_path):
     return h, None
 
 class pprSampler():
-    def __init__(self, n_ent:int, n_rel:int, topk:int, topm:int, homoEdges:list, edge_index:list, data_path:str, split='train', args=None):
+    def __init__(self, n_ent:int, n_rel:int, topk:int, topm:int, homoEdges:list, edge_index:list, data_path:str, split='train', args=None, preloaded_ppr=None):
         ''' 
             args:
             topk: number of sampled nodes for one head entity 
@@ -131,21 +131,26 @@ class pprSampler():
         
         self.ppr_cache = {}
         # Pre-load all PPR scores in memory to avoid extremely slow disk I/O / unpickling during training
-        if self.n_ent <= 50000:
-            print(f"==> Pre-loading all {self.n_ent} PPR scores into memory for split '{split}'...")
-            self.all_ppr_scores = np.zeros((self.n_ent, self.n_ent), dtype=np.float32)
-            
-            import multiprocessing
-            from functools import partial
-            num_loader_workers = min(32, multiprocessing.cpu_count())
-            worker_func = partial(_load_one_ppr, ppr_save_path=self.ppr_savePath)
-            
-            with multiprocessing.Pool(processes=num_loader_workers) as pool:
-                for h, scores in tqdm(pool.imap_unordered(worker_func, range(self.n_ent), chunksize=200), total=self.n_ent, desc="Loading PPR scores", ncols=50, leave=False):
-                    if scores is not None:
-                        for k, v in scores.items():
-                            self.all_ppr_scores[h, k] = v
-            self.use_in_memory_ppr = True
+        if self.n_ent <= 80000:
+            if preloaded_ppr is not None:
+                print(f"==> Using pre-loaded PPR scores from other split for split '{split}'...")
+                self.all_ppr_scores = preloaded_ppr
+                self.use_in_memory_ppr = True
+            else:
+                print(f"==> Pre-loading all {self.n_ent} PPR scores into memory for split '{split}'...")
+                self.all_ppr_scores = np.zeros((self.n_ent, self.n_ent), dtype=np.float32)
+                
+                import multiprocessing
+                from functools import partial
+                num_loader_workers = min(32, multiprocessing.cpu_count())
+                worker_func = partial(_load_one_ppr, ppr_save_path=self.ppr_savePath)
+                
+                with multiprocessing.Pool(processes=num_loader_workers) as pool:
+                    for h, scores in tqdm(pool.imap_unordered(worker_func, range(self.n_ent), chunksize=200), total=self.n_ent, desc="Loading PPR scores", ncols=50, leave=False):
+                        if scores is not None:
+                            for k, v in scores.items():
+                                self.all_ppr_scores[h, k] = v
+                self.use_in_memory_ppr = True
         else:
             self.use_in_memory_ppr = False
 
