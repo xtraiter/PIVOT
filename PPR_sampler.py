@@ -165,7 +165,7 @@ class pprSampler():
         del tmp_adj; del tmp_degree
         '''
         
-        if hasattr(self.args, 'use_learned_pruning') and self.args.use_learned_pruning:
+        if (hasattr(self.args, 'use_learned_pruning') and self.args.use_learned_pruning) or (hasattr(self.args, 'rerank_alpha') and self.args.rerank_alpha > 0):
             print("==> Initializing MLP Pruning components in sampler...")
             self.adj = defaultdict(list)
             for h, t in homoEdges:

@@ -55,6 +55,7 @@ parser.add_argument('--only_eval', action='store_true')
 parser.add_argument('--not_shuffle_train', action='store_true')
 parser.add_argument('--use_learned_pruning', action='store_true')
 parser.add_argument('--pruning_model_path', type=str, default='')
+parser.add_argument('--rerank_alpha', type=float, default=0.0)
 args = parser.parse_args()
 
 class Options(object):
