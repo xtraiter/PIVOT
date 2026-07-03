@@ -8,6 +8,20 @@ Sử dụng quy tắc này để tự động đồng bộ hóa tài liệu thay
 
 ---
 
+## Quy tắc thiết kế và trình bày báo cáo (PIVOT Presentation & Linking Guidelines)
+
+1. **Đồng bộ hóa tài liệu và Liên kết thư mục (Reports & Linking)**:
+   - Hai tệp tin tài liệu chính là [PIVOT_reproduction_walkthrough.md](file:///home/vanba/KLTN/one-shot-subgraph/reports/PIVOT_reproduction_walkthrough.md) và [changes_summary.md](file:///home/vanba/KLTN/one-shot-subgraph/reports/changes_summary.md) **BẮT BUỘC** phải nằm chung trong thư mục `reports/`.
+   - Tệp tin walkthrough phải kết nối lý thuyết, phân tích thực nghiệm và dẫn chứng trực tiếp bằng các liên kết (markdown links) chỉ tới các khối mã thay đổi tương ứng trong tệp `changes_summary.md` (ví dụ: [base_model.py](file:///home/vanba/KLTN/one-shot-subgraph/reports/changes_summary.md#L1167)).
+
+2. **Phong cách Trình bày Walkthrough chi tiết (Detailed Dialogue-driven Walkthrough)**:
+   - Tệp tin walkthrough **BẮT BUỘC** phải trình bày theo phong cách đối thoại học thuật phản biện sâu sắc (critique-defense dialogue), biện giải tường minh lý thuyết đằng sau các hiện tượng số liệu.
+   - Phải phân tích đầy đủ và chi tiết cả hai phép thử quan trọng:
+     - *Phép thử 1 (Vế 2 Deliverable)*: "Cùng Accuracy -> Latency thấp hơn" (Chứng minh qua bảng so sánh Recall@K của MLP và PPR).
+     - *Phép thử 2 (Post-hoc Reranking)*: Giải thích rõ hiện tượng connectivity starvation khi joint training và cách hoạt động của Post-hoc Reranking bằng các công thức toán học tường minh kèm đoạn mã tích hợp thực tế.
+
+---
+
 ## Quy tắc thiết kế mô hình và Đánh giá (PIVOT Core Guidelines)
 
 1. **Chính sách Post-hoc Reranking**:
