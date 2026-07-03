@@ -159,6 +159,8 @@ if __name__ == '__main__':
         if args.only_eval:
             valid_mrr, out_str = model.evaluate(verbose=True, rank_CR=False)
             print(out_str)
+            with open(opts.perf_file, 'a+') as f:
+                f.write(out_str)
             exit()
 
         # training
