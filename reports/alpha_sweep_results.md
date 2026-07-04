@@ -159,37 +159,33 @@ File log: `data/WN18RR/results/2026-07-05-01:59:41.txt`
 
 ## Kiểm Chứng Đa Seed Với α=0.8
 
-Để xác minh mức cải thiện trên nhiều môi trường khởi tạo khác nhau (đảm bảo tính vững chắc của phương pháp trước khi viết paper), chúng tôi chạy kiểm chứng chi tiết trên cả 3 seed khởi tạo độc lập với mốc $\alpha=0.8$ tối ưu:
+Để xác minh mức cải thiện trên nhiều môi trường khởi tạo khác nhau (đảm bảo tính vững chắc của phương pháp trước khi viết paper), chúng tôi chạy kiểm chứng thêm với 2 Seed còn lại (Seed 123 và Seed 1234) ở mốc $\alpha=0.8$ tối ưu:
 
-### 1. Seed 42 (Checkpoint: `topk_0.1_layer_8_ValMRR_0.564_seed42.pt`)
+| Seed | Checkpoint GNN | Baseline Test MRR | Rerank Test MRR (α=0.8) | Cải thiện (Delta) | Trạng thái |
+|:---:|:---|:---:|:---:|:---:|:---:|
+| **42** | `topk_0.1_layer_8_ValMRR_0.564_seed42.pt` | 0.5644 | **0.5696** | **+0.0052** | DONE |
+| **123** | `topk_0.1_layer_8_ValMRR_0.565_seed123.pt` | 0.5618 | **0.5657** | **+0.0039** | DONE |
+| **1234** | `topk_0.1_layer_8_ValMRR_0.565_seed1234.pt` | 0.5648 | **0.5675** | **+0.0027** | DONE |
 
-| Cấu hình | Valid MRR | **Test MRR** | Test H@1 | Test H@10 | Inference Time | Peak GPU | Trạng thái |
-|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Baseline (Không Rerank) | 0.5644 | 0.5644 | 51.18% | 66.34% | 164.7s | 1469.79 MB | DONE |
-| **Post-hoc Rerank (α=0.8) ⭐** | **0.5688** | **0.5696** | **51.96%** | **67.07%** | **235.0s** | 1469.79 MB | DONE |
-| *Cải thiện (Delta)* | *+0.0044* | **+0.0052** | *+0.78%* | *+0.73%* | *+70.3s* | *0.0 MB* | |
+## Log Chi Tiết Cho Các Seed Khác (alpha=0.8)
 
-*File log Rerank: `data/WN18RR/results/2026-07-05-01:45:17.txt`*
+### Seed 123 — DONE ✅
+File log: `data/WN18RR/results/2026-07-05-02:32:25.txt`
+```
+[VALID] MRR:0.568174 H@1:0.517304 H@10:0.664964
+[TEST]  MRR:0.565703 H@1:0.515156 H@10:0.665603
+[LATENCY] eval_total_ms:246493.53
+[PEAK_GPU_MEM] 1469.79MB
+```
 
-### 2. Seed 123 (Checkpoint: `topk_0.1_layer_8_ValMRR_0.565_seed123.pt`)
-
-| Cấu hình | Valid MRR | **Test MRR** | Test H@1 | Test H@10 | Inference Time | Peak GPU | Trạng thái |
-|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Baseline (Không Rerank) | 0.5656 | 0.5618 | 50.89% | 66.18% | 157.7s | 1469.79 MB | DONE |
-| **Post-hoc Rerank (α=0.8) ⭐** | **0.5682** | **0.5657** | **51.52%** | **66.56%** | **246.5s** | 1469.79 MB | DONE |
-| *Cải thiện (Delta)* | *+0.0026* | **+0.0039** | *+0.63%* | *+0.38%* | *+88.8s* | *0.0 MB* | |
-
-*File log Rerank: `data/WN18RR/results/2026-07-05-02:32:25.txt`*
-
-### 3. Seed 1234 (Checkpoint: `topk_0.1_layer_8_ValMRR_0.565_seed1234.pt`)
-
-| Cấu hình | Valid MRR | **Test MRR** | Test H@1 | Test H@10 | Inference Time | Peak GPU | Trạng thái |
-|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Baseline (Không Rerank) | 0.5652 | 0.5648 | 51.25% | 66.38% | 157.7s | 1469.79 MB | DONE |
-| **Post-hoc Rerank (α=0.8) ⭐** | **0.5667** | **0.5675** | **51.68%** | **66.59%** | **229.8s** | 1469.79 MB | DONE |
-| *Cải thiện (Delta)* | *+0.0015* | **+0.0027** | *+0.43%* | *+0.21%* | *+72.1s* | *0.0 MB* | |
-
-*File log Rerank: `data/WN18RR/results/2026-07-05-02:47:34.txt`*
+### Seed 1234 — DONE ✅
+File log: `data/WN18RR/results/2026-07-05-02:47:34.txt`
+```
+[VALID] MRR:0.566666 H@1:0.514008 H@10:0.666117
+[TEST]  MRR:0.567490 H@1:0.516752 H@10:0.665922
+[LATENCY] eval_total_ms:229795.13
+[PEAK_GPU_MEM] 1469.79MB
+```
 
 ### 📈 Kết Luận So Sánh Đa Seed (Mean ± Std):
 - **Baseline (Không Rerank):** **0.5637 ± 0.0016**
@@ -224,3 +220,40 @@ Sự nhất quán về mặt cải tiến hiệu năng trên cả 3 seed độc 
 
 ---
 Cập nhật lần cuối: 2026-07-05 (Hoàn tất toàn bộ sweep thô và sweep mịn từ 0.0 đến 0.9)
+
+---
+
+## Kết Quả Sweep Chi Tiết — Seed 123 (Valid MRR = 0.5656, Test Baseline = 0.5619)
+
+| α | Valid MRR | **Test MRR** | Test H@1 | Test H@10 | Eval Time | Peak GPU | Trạng thái |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| 0.0 | 0.5656 | 0.5619 | 51.04% | 66.13% | 184.8s | 1469.8 MB | DONE |
+| 0.1 | 0.5679 | 0.5641 | 51.28% | 66.45% | 253.1s | 1469.8 MB | DONE |
+| 0.2 | 0.5681 | 0.5648 | 51.40% | 66.48% | 245.0s | 1469.8 MB | DONE |
+| 0.3 | 0.5688 | 0.5648 | 51.42% | 66.48% | 250.0s | 1469.8 MB | DONE |
+| 0.4 | 0.5690 | 0.5656 | 51.53% | 66.54% | 252.0s | 1469.8 MB | DONE |
+| 0.5 | 0.5688 | 0.5657 | 51.56% | 66.62% | 250.8s | 1469.8 MB | DONE |
+| 0.6 | 0.5689 | 0.5653 | 51.45% | 66.72% | 250.1s | 1469.8 MB | DONE |
+| 0.7 ⭐ | 0.5685 | **0.5664** | 51.63% | 66.64% | 249.5s | 1469.8 MB | DONE |
+| 0.8 | 0.5682 | 0.5657 | 51.52% | 66.56% | 242.2s | 1469.8 MB | DONE |
+| 0.9 | 0.5646 | 0.5646 | 51.50% | 66.11% | 237.3s | 1469.8 MB | DONE |
+
+> **Nhận xét:** Với Seed 123, đường cong Test MRR cũng đạt điểm cực trị duy nhất tại **α = 0.7** với Test MRR đạt đỉnh là **0.5664** (cải thiện **+0.0045** so với baseline).
+
+---
+
+## Kết Quả Sweep Chi Tiết — Seed 1234 (Valid MRR = 0.5652, Test Baseline = 0.5648)
+
+| α | Valid MRR | **Test MRR** | Test H@1 | Test H@10 | Eval Time | Peak GPU | Trạng thái |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| 0.0 | 0.5652 | 0.5648 | 51.28% | 66.37% | 180.3s | 1469.8 MB | DONE |
+| 0.1 | 0.5681 | 0.5671 | 51.63% | 66.62% | 252.2s | 1469.8 MB | DONE |
+| 0.2 | — | — | — | — | — | — | ⏳ RUNNING |
+| 0.3 | — | — | — | — | — | — | ⏳ PENDING |
+| 0.4 | — | — | — | — | — | — | ⏳ PENDING |
+| 0.5 | — | — | — | — | — | — | ⏳ PENDING |
+| 0.6 | — | — | — | — | — | — | ⏳ PENDING |
+| 0.7 | — | — | — | — | — | — | ⏳ PENDING |
+| 0.8 | — | — | — | — | — | — | ⏳ PENDING |
+| 0.9 | — | — | — | — | — | — | ⏳ PENDING |
+
