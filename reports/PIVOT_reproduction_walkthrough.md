@@ -168,9 +168,9 @@ Bảng hiệu năng đầy đủ theo yêu cầu kế hoạch (latency/query, pe
 
 ## Giai Đoạn 2: PIVOT Development
 
-### Tuần 6: Budgeted Protocol & Tuần 7-8: Pareto Optimizer
+### Tuần 6: Budgeted Protocol
 
-Để thực hiện suy luận giới hạn ngân sách (Budgeted Inference) và tối ưu hóa đa mục tiêu (MRR vs Latency vs VRAM), script [budgeted_protocol.py](file:///home/vanba/KLTN/one-shot-subgraph/budgeted_protocol.py) và bộ điều phối [pareto_optimizer.py](file:///home/vanba/KLTN/one-shot-subgraph/pareto_optimizer.py) đã được thiết lập. 
+Để thực hiện suy luận giới hạn ngân sách (Budgeted Inference) và tối ưu hóa đa mục tiêu (MRR vs Latency vs VRAM), script [budgeted_protocol.py](file:///home/vanba/KLTN/one-shot-subgraph/budgeted_protocol.py) đã được thiết lập. 
 
 Ràng buộc ngân sách (Budget $\theta$) được định nghĩa bằng tỷ lệ số thực thể trong candidate pool được giữ lại: $\theta \in \{1\%, 5\%, 10\%, 20\%\}$. 
 
@@ -178,23 +178,41 @@ Dưới đây là kết quả thực nghiệm chi tiết (tính trung bình trê
 
 | Budget ($\theta$) | Test MRR (Mean±Std) | Test H@1 (Mean) | Test H@10 (Mean) | Latency/Query (ms) | Speedup | Throughput (q/s) | Peak GPU VRAM (MB) |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **1%** | 0.5412 ± 0.0015 | 49.63% | 62.64% | **12.32 ms** | **4.33x** ⚡ | 81.24 q/s | **159.36 MB** (−93%) |
-| **5% ⭐** | **0.5642** ± 0.0013 | 51.24% | 66.34% | **17.16 ms** | **3.10x** ⚡ | 58.29 q/s | **722.50 MB** (−52%) |
+| **1%** | 0.5412 ± 0.0015 | 49.63% | 62.64% | **12.32 ms** | **4.33x** | 81.24 q/s | **159.36 MB** (−93%) |
+| **5% ⭐** | **0.5642** ± 0.0013 | 51.24% | 66.34% | **17.16 ms** | **3.10x** | 58.29 q/s | **722.50 MB** (−52%) |
 | **10%** *(Baseline)* | 0.5637 ± 0.0016 | 51.16% | 66.28% | 27.95 ms | 1.90x | 35.78 q/s | 1469.79 MB |
 | **20%** | 0.5598 ± 0.0014 | 50.83% | 65.68% | 48.46 ms | 1.10x | 20.64 q/s | 3129.51 MB |
 | *No Budget (Full)* | 0.5637 ± 0.0016 | 51.16% | 66.28% | 53.28 ms | 1.00x | 18.80 q/s | 1499.14 MB |
 
-#### 📈 Phân Tích Pareto Frontier & Tối Ưu Điểm Vận Hành:
-- **Điểm cực trị Pareto ngọt ngào (Sweet Spot) tại Budget = 5%:**
-  - Về **độ chính xác**: Đạt Test MRR = **0.5642**, chính thức vượt qua cả cấu hình Full Candidate (**0.5637**) của GNN gốc nhờ loại bỏ bớt các node gây nhiễu trong subgraph.
-  - Về **tốc độ**: Latency giảm từ 53.28 ms xuống chỉ còn **17.16 ms** (đạt mức **Speedup 3.1x** ⚡).
-  - Về **bộ nhớ**: VRAM sử dụng lúc inference giảm hơn một nửa, từ 1.5GB xuống còn **722.5MB**.
-- **Điểm tối thiểu tài nguyên tại Budget = 1%:**
-  - Tiết kiệm tới **93% VRAM** (chỉ mất **159.36 MB**) và đạt tốc độ phản hồi cực nhanh **12.32 ms** (**Speedup 4.33x**), trong khi độ chính xác chỉ suy giảm nhẹ ở mức chấp nhận được (~2% MRR).
-- Các đồ thị Pareto Frontier chi tiết được lưu trữ cho từng seed tương ứng tại:
-  - Seed 42: [pareto_frontier.png](file:///home/vanba/KLTN/one-shot-subgraph/data/WN18RR/budget_results/seed_42/pareto_frontier.png)
-  - Seed 123: [pareto_frontier.png](file:///home/vanba/KLTN/one-shot-subgraph/data/WN18RR/budget_results/seed_123/pareto_frontier.png)
-  - Seed 1234: [pareto_frontier.png](file:///home/vanba/KLTN/one-shot-subgraph/data/WN18RR/budget_results/seed_1234/pareto_frontier.png)
+---
+
+### Tuần 7–8: Pareto Optimizer & Controller
+
+Bộ điều phối [pareto_optimizer.py](file:///home/vanba/KLTN/one-shot-subgraph/pareto_optimizer.py) quản lý và trích xuất tập hợp các cấu hình tối ưu Pareto (non-dominated configurations) từ không gian tham số search-grid gồm 120 cấu hình khác nhau (kết hợp các mốc alpha, beta, layer GNN L, và budget subgraph $\theta$).
+
+#### 📊 5 Điểm Tối Ưu Pareto Frontier Trích Xuất từ Thực Tế (Tệp `budget_results/pareto_cache_WN18RR.json`):
+
+| Điểm Pareto | Test MRR | Latency / Query | Cấu hình tham số tối ưu (alpha, beta, layer L, budget θ) | Ý nghĩa vận hành |
+|:---:|:---:|:---:|:---|:---|
+| **Point 1** | **0.5416** | **5.00 ms** | `alpha=0.85`, `beta=0.00`, `layer=8`, `budget=0.01` | Đỉnh cao tốc độ (Speedup 10.6x ⚡), VRAM cực tiểu (159 MB) |
+| **Point 2** | **0.5439** | **6.05 ms** | `alpha=0.85`, `beta=0.25`, `layer=8`, `budget=0.01` | Cải thiện độ phủ với ngân sách siêu nhỏ 1% |
+| **Point 3** | **0.5625** | **11.22 ms** | `alpha=0.85`, `beta=0.00`, `layer=6`, `budget=0.05` | Cân bằng hoàn hảo tốc độ và độ chính xác (GNN 6 lớp) |
+| **Point 4** | **0.5630** | **13.53 ms** | `alpha=0.85`, `beta=0.25`, `layer=6`, `budget=0.05` | Tích hợp liên kết cấu trúc beta ở budget 5% |
+| **Point 5 ⭐** | **0.5641** | **14.52 ms** | `alpha=0.85`, `beta=0.00`, `layer=8`, `budget=0.05` | Đỉnh cao độ chính xác Pareto, vượt baseline GNN gốc |
+
+#### ⚙️ Ví dụ Thực Tế Chạy Bộ Điều Phối (Pareto Controller Queries):
+
+Bộ điều khiển `BudgetController` cho phép các hệ thống KG QA truy vấn động cấu hình tối ưu theo thời gian thực tùy thuộc vào ràng buộc phần cứng:
+
+*   **Truy vấn 1: "Tìm cấu hình có MRR tốt nhất dưới ràng buộc Latency $\le$ 15 ms"**
+    - Lệnh truy vấn: `python3 pareto_optimizer.py --cache_path budget_results/pareto_cache_WN18RR.json --max_latency 15.0`
+    - Kết quả trả về: Cấu hình **Point 5** (`alpha=0.85`, `beta=0.0`, `layer=8`, `budget=0.05`).
+    - Số liệu: Đạt **MRR = 0.5641** | **Latency = 14.52 ms** (Thỏa mãn ràng buộc).
+*   **Truy vấn 2: "Tìm cấu hình có Latency thấp nhất để đạt MRR $\ge$ 0.54"**
+    - Lệnh truy vấn: `python3 pareto_optimizer.py --cache_path budget_results/pareto_cache_WN18RR.json --min_mrr 0.54`
+    - Kết quả trả về: Cấu hình **Point 1** (`alpha=0.85`, `beta=0.0`, `layer=8`, `budget=0.01`).
+    - Số liệu: Đạt **MRR = 0.5416** | **Latency = 5.00 ms** (Thỏa mãn ràng buộc và đạt tốc độ tối đa).
+
 
 ### Tuần 9: Learned Pruning (MLP Pruning) — Phân Tích Sâu
 
