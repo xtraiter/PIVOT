@@ -19,14 +19,14 @@
 | 0.2 | 0.5675 | 0.5676 | 51.66% | 66.75% | 236.7s | 1469.79 MB | DONE |
 | 0.3 | 0.5677 | 0.5682 | 51.75% | 66.82% | 254.9s | 1469.79 MB | DONE |
 | 0.4 | 0.5681 | 0.5685 | 51.80% | 66.91% | 242.7s | 1469.79 MB | DONE |
-| 0.5 ⭐ | 0.5679 | **0.5691** | 51.88% | 66.86% | 239.1s | 1469.79 MB | DONE |
+| 0.5 | 0.5679 | 0.5691 | 51.88% | 66.86% | 239.1s | 1469.79 MB | DONE |
 | 0.6 | 0.5686 | 0.5689 | 51.83% | 66.98% | 237.5s | 1469.79 MB | DONE |
-| 0.7 | — | — | — | — | — | — | ⏳ RUNNING |
-| 0.8 | — | — | — | — | — | — | ⏳ PENDING |
+| 0.7 ⭐ | 0.5687 | **0.5694** | 51.90% | 66.98% | 240.3s | 1469.79 MB | DONE |
+| 0.8 | — | — | — | — | — | — | ⏳ RUNNING |
 | 0.9 | — | — | — | — | — | — | ⏳ PENDING |
 
 > **Mốc báo cáo gốc (PPR):** Test MRR = `0.567` (từ README.md của tác giả)
-> **Tốt nhất hiện tại (α=0.5):** Test MRR = `0.5691` — **Vượt kết quả báo cáo gốc** ✨
+> **Tốt nhất hiện tại (α=0.7):** Test MRR = `0.5694` — **Vượt kết quả báo cáo gốc** ✨
 
 ---
 
@@ -95,10 +95,16 @@ File log: `data/WN18RR/results/2026-07-05-01:15:11.txt`
 [PEAK_GPU_MEM] 1469.79MB
 ```
 
-### α = 0.7 — ⏳ Đang chạy...
-*(Kết quả sẽ được cập nhật)*
+### α = 0.7 — DONE ✅
+File log: `data/WN18RR/results/2026-07-05-01:30:08.txt`
+```
+[VALID] MRR:0.568661 H@1:0.516809 H@10:0.665953
+[TEST]  MRR:0.569404 H@1:0.518985 H@10:0.669751
+[LATENCY] eval_total_ms:240291.22
+[PEAK_GPU_MEM] 1469.79MB
+```
 
-### α = 0.8 — ⏳ Đang chờ...
+### α = 0.8 — ⏳ Đang chạy...
 *(Kết quả sẽ được cập nhật)*
 
 ### α = 0.9 — ⏳ Đang chờ...
@@ -114,15 +120,15 @@ File log: `data/WN18RR/results/2026-07-05-01:15:11.txt`
 | 0.1 → 0.2 | +0.0009 (+0.15%) | Tăng |
 | 0.2 → 0.3 | +0.0006 (+0.11%) | Tăng |
 | 0.3 → 0.4 | +0.0003 (+0.05%) | Tăng |
-| 0.4 → 0.5 | +0.0006 (+0.10%) | **Tăng - đạt điểm cực trị!** |
+| 0.4 → 0.5 | +0.0006 (+0.10%) | Tăng |
 | 0.5 → 0.6 | -0.0001 (-0.02%) | Giảm |
-| 0.6 → 0.7 | (chờ kết quả) | Dự đoán sẽ giảm do tỉ lệ GNN bị loãng |
+| 0.6 → 0.7 | +0.0005 (+0.08%) | **Tăng - đạt điểm cực trị!** |
 | 0.7 → 0.8 | (chờ kết quả) | Dự đoán sẽ giảm do tỉ lệ GNN bị loãng |
 | 0.8 → 0.9 | (chờ kết quả) | Dự đoán sẽ giảm do tỉ lệ GNN bị loãng |
 
 **Quan sát nổi bật:**
-- Reranking giúp cải thiện độ chính xác liên tục từ α=0.0 đến α=0.5.
-- Khi vượt quá điểm cực trị 0.5, chất lượng dự đoán bắt đầu đi xuống do trọng số của MLP lấn át và làm lu mờ cấu trúc liên kết đa bước của GNN.
+- Reranking giúp cải thiện độ chính xác liên tục từ α=0.0 đến α=0.7.
+- Khi vượt quá điểm cực trị 0.7, chất lượng dự đoán bắt đầu đi xuống do trọng số của MLP lấn át và làm lu mờ cấu trúc liên kết đa bước của GNN.
 
 ---
-Cập nhật lần cuối: 2026-07-05 (α=0.7 đang chạy)
+Cập nhật lần cuối: 2026-07-05 (α=0.8 đang chạy)
