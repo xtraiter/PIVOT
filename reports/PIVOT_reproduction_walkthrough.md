@@ -250,47 +250,6 @@ Tích hợp tại [base_model.py → `_post_hoc_rerank()`](file:///home/vanba/KL
 > **Mốc báo cáo gốc (PPR):** Test MRR = `0.567` | **Tốt nhất hiện tại (α=0.5):** Test MRR = `0.5691` → +0.0021 so với paper gốc ✨  
 > Kết quả alpha sweep đầy đủ tại [alpha_sweep_results.md](file:///home/vanba/KLTN/one-shot-subgraph/reports/alpha_sweep_results.md)
 
------:|:---------:|:------------:|:--------:|:---------:|:---------:|
-| 0.0 | 0.5644 | 0.5644 | 51.18% | 66.34% | 164.7s |
-| 0.1 | 0.5671 | 0.5667 | 51.47% | 66.77% | 227.4s |
-| 0.2 | 0.5675 | 0.5676 | 51.66% | 66.75% | 236.7s |
-| 0.3 | 0.5677 | 0.5682 | 51.75% | 66.82% | 254.9s |
-| 0.4 | 0.5681 | 0.5685 | 51.80% | 66.91% | 242.7s |
-| **0.5 ⭐** | 0.5679 | **0.5691** | 51.88% | 66.86% | 239.1s |
-| 0.6 | *(running)* | | | | |
-| 0.7 | *(pending)* | | | | |
-| 0.8 | *(pending)* | | | | |
-| 0.9 | *(pending)* | | | | |
-
-> **Mốc báo cáo gốc (PPR):** Test MRR = `0.567` | **Tốt nhất hiện tại (α=0.5):** Test MRR = `0.5691` → +0.0021 so với paper gốc ✨  
-> Kết quả alpha sweep đầy đủ tại [alpha_sweep_results.md](file:///home/vanba/KLTN/one-shot-subgraph/reports/alpha_sweep_results.md)
-
------:|:---------:|:------------:|:--------:|:---------:|:---------:|
-| 0.0 | 0.5644 | 0.5644 | 51.18% | 66.34% | 164.7s |
-| 0.1 | 0.5671 | 0.5667 | 51.47% | 66.77% | 227.4s |
-| 0.2 | 0.5675 | 0.5676 | 51.66% | 66.75% | 236.7s |
-| 0.3 | 0.5677 | 0.5682 | 51.75% | 66.82% | 254.9s |
-| 0.4 | 0.5681 | 0.5685 | 51.80% | 66.91% | 242.7s |
-| **0.5 ⭐** | 0.5679 | **0.5691** | 51.88% | 66.86% | 239.1s |
-| 0.6 | *(running)* | | | | |
-| 0.7 | *(pending)* | | | | |
-| 0.8 | *(pending)* | | | | |
-| 0.9 | *(pending)* | | | | |
-
-> **Mốc báo cáo gốc (PPR):** Test MRR = `0.567` | **Tốt nhất hiện tại (α=0.5):** Test MRR = `0.5691` → +0.0021 so với paper gốc ✨  
-> Kết quả alpha sweep đầy đủ tại [alpha_sweep_results.md](file:///home/vanba/KLTN/one-shot-subgraph/reports/alpha_sweep_results.md)
-
------:|:---------:|:------------:|:--------:|:---------:|:---------:|
-| 0.0 | 0.5644 | 0.5644 | 51.18% | 66.34% | 164.7s |
-| 0.1 | 0.5671 | 0.5667 | 51.47% | 66.77% | 227.4s |
-| 0.2 | 0.5675 | 0.5676 | 51.66% | 66.75% | 236.7s |
-| 0.3 | 0.5677 | 0.5682 | 51.75% | 66.82% | 254.9s |
-| **0.4 ⭐** | 0.5681 | **0.5685** | 51.80% | 66.91% | 242.7s |
-| 0.5 | *(running)* | | | | |
-
-> **Mốc báo cáo gốc (PPR):** Test MRR = `0.567` | **Tốt nhất hiện tại (α=0.4):** Test MRR = `0.5685` → +0.0015 so với paper gốc ✨  
-> Kết quả alpha sweep đầy đủ tại [alpha_sweep_results.md](file:///home/vanba/KLTN/one-shot-subgraph/reports/alpha_sweep_results.md)
-
 ---
 
 
