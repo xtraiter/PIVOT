@@ -134,6 +134,26 @@ File log: `data/WN18RR/results/2026-07-05-01:59:41.txt`
 | **123** | `topk_0.1_layer_8_ValMRR_0.565_seed123.pt` | 0.5618 | **0.5657** | **+0.0039** | DONE |
 | **1234** | `topk_0.1_layer_8_ValMRR_0.565_seed1234.pt` | 0.5648 | **0.5675** | **+0.0027** | DONE |
 
+## Log Chi Tiết Cho Các Seed Khác (alpha=0.8)
+
+### Seed 123 — DONE ✅
+File log: `data/WN18RR/results/2026-07-05-02:32:25.txt`
+```
+[VALID] MRR:0.568174 H@1:0.517304 H@10:0.664964
+[TEST]  MRR:0.565703 H@1:0.515156 H@10:0.665603
+[LATENCY] eval_total_ms:246493.53
+[PEAK_GPU_MEM] 1469.79MB
+```
+
+### Seed 1234 — DONE ✅
+File log: `data/WN18RR/results/2026-07-05-02:47:34.txt`
+```
+[VALID] MRR:0.566666 H@1:0.514008 H@10:0.666117
+[TEST]  MRR:0.567490 H@1:0.516752 H@10:0.665922
+[LATENCY] eval_total_ms:229795.13
+[PEAK_GPU_MEM] 1469.79MB
+```
+
 ### 📈 Kết Luận So Sánh Đa Seed (Mean ± Std):
 - **Baseline (Không Rerank):** **0.5637 ± 0.0016**
 - **PIVOT Reranking ($\alpha=0.8$):** **0.5676 ± 0.0020**
