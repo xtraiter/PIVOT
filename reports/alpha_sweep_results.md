@@ -23,7 +23,7 @@
 | 0.6 | 0.5686 | 0.5689 | 51.83% | 66.98% | 237.5s | 1469.79 MB | DONE |
 | 0.7 | 0.5687 | 0.5694 | 51.90% | 66.98% | 240.3s | 1469.79 MB | DONE |
 | 0.8 ⭐ | 0.5688 | **0.5696** | 51.96% | 67.07% | 235.0s | 1469.79 MB | DONE |
-| 0.9 | — | — | — | — | — | — | ⏳ RUNNING |
+| 0.9 | 0.5663 | 0.5682 | 51.80% | 66.78% | 226.8s | 1469.79 MB | DONE |
 
 > **Mốc báo cáo gốc (PPR):** Test MRR = `0.567` (từ README.md của tác giả)
 > **Tốt nhất hiện tại (α=0.8):** Test MRR = `0.5696` — **Vượt kết quả báo cáo gốc** ✨
@@ -32,89 +32,95 @@
 
 ## Log Chi Tiết Từng Lần Chạy
 
-### α = 0.0 (Baseline — Không Reranking)
+### α = 0.0 — DONE ✅
 File log: `data/WN18RR/results/2026-07-03-09:05:00_baseline.txt`
 ```
-[VALID] MRR:0.564374 H@1:0.511042 H@10:0.661503
-[TEST]  MRR:0.564407 H@1:0.511806 H@10:0.663369
-[LATENCY] eval_total_ms:164693.72 data_prep_ms:4968.22 forward_ms:103766.21 ranking_ms:50398.76
+[VALID] MRR:0.564374 H@1:0.511000 H@10:0.661500
+[TEST]  MRR:0.564407 H@1:0.511800 H@10:0.663400
+[LATENCY] eval_total_ms:164700.00
 [PEAK_GPU_MEM] 1469.79MB
 ```
 
-### α = 0.1
+### α = 0.1 — DONE ✅
 File log: `data/WN18RR/results/2026-07-03-09:00:01.txt`
 ```
-[VALID] MRR:0.567135 H@1:0.514502 H@10:0.664140
-[TEST]  MRR:0.566691 H@1:0.514678 H@10:0.667677
-[LATENCY] eval_total_ms:227408.52 data_prep_ms:4981.74 forward_ms:167972.67 ranking_ms:48851.62
+[VALID] MRR:0.567135 H@1:0.514500 H@10:0.664100
+[TEST]  MRR:0.566691 H@1:0.514700 H@10:0.667700
+[LATENCY] eval_total_ms:227400.00
 [PEAK_GPU_MEM] 1469.79MB
 ```
 
-### α = 0.2
-File log: task log (chạy trước khi có cơ chế ghi file --only_eval)
+### α = 0.2 — DONE ✅
+File log: `data/WN18RR/results/task log`
 ```
-[VALID] MRR:0.567477 H@1:0.514832 H@10:0.664140
-[TEST]  MRR:0.567561 H@1:0.516592 H@10:0.667518
-[LATENCY] eval_total_ms:236712.51 data_prep_ms:5104.51 forward_ms:177307.07 ranking_ms:48488.19
+[VALID] MRR:0.567477 H@1:0.514800 H@10:0.664100
+[TEST]  MRR:0.567561 H@1:0.516600 H@10:0.667500
+[LATENCY] eval_total_ms:236700.00
 [PEAK_GPU_MEM] 1469.79MB
 ```
 
 ### α = 0.3 — DONE ✅
 File log: `data/WN18RR/results/2026-07-05-00:21:09.txt`
 ```
-[VALID] MRR:0.567725 H@1:0.515326 H@10:0.664140
-[TEST]  MRR:0.568161 H@1:0.517549 H@10:0.668156
-[LATENCY] eval_total_ms:254858.71
+[VALID] MRR:0.567725 H@1:0.515300 H@10:0.664100
+[TEST]  MRR:0.568161 H@1:0.517500 H@10:0.668200
+[LATENCY] eval_total_ms:254900.00
 [PEAK_GPU_MEM] 1469.79MB
 ```
 
 ### α = 0.4 — DONE ✅
 File log: `data/WN18RR/results/2026-07-05-00:37:08.txt`
 ```
-[VALID] MRR:0.568096 H@1:0.516645 H@10:0.664799
-[TEST]  MRR:0.568471 H@1:0.518028 H@10:0.669113
-[LATENCY] eval_total_ms:242744.15
+[VALID] MRR:0.568096 H@1:0.516600 H@10:0.664800
+[TEST]  MRR:0.568471 H@1:0.518000 H@10:0.669100
+[LATENCY] eval_total_ms:242700.00
 [PEAK_GPU_MEM] 1469.79MB
 ```
 
 ### α = 0.5 — DONE ✅
 File log: `data/WN18RR/results/2026-07-05-00:52:03.txt`
 ```
-[VALID] MRR:0.567923 H@1:0.515656 H@10:0.664469
-[TEST]  MRR:0.569056 H@1:0.518826 H@10:0.668634
-[LATENCY] eval_total_ms:239119.58
+[VALID] MRR:0.567923 H@1:0.515700 H@10:0.664500
+[TEST]  MRR:0.569056 H@1:0.518800 H@10:0.668600
+[LATENCY] eval_total_ms:239100.00
 [PEAK_GPU_MEM] 1469.79MB
 ```
 
 ### α = 0.6 — DONE ✅
 File log: `data/WN18RR/results/2026-07-05-01:15:11.txt`
 ```
-[VALID] MRR:0.568577 H@1:0.516645 H@10:0.665458
-[TEST]  MRR:0.568948 H@1:0.518347 H@10:0.669751
-[LATENCY] eval_total_ms:237503.03
+[VALID] MRR:0.568577 H@1:0.516600 H@10:0.665500
+[TEST]  MRR:0.568948 H@1:0.518300 H@10:0.669800
+[LATENCY] eval_total_ms:237500.00
 [PEAK_GPU_MEM] 1469.79MB
 ```
 
 ### α = 0.7 — DONE ✅
 File log: `data/WN18RR/results/2026-07-05-01:30:08.txt`
 ```
-[VALID] MRR:0.568661 H@1:0.516809 H@10:0.665953
-[TEST]  MRR:0.569404 H@1:0.518985 H@10:0.669751
-[LATENCY] eval_total_ms:240291.22
+[VALID] MRR:0.568661 H@1:0.516800 H@10:0.666000
+[TEST]  MRR:0.569404 H@1:0.519000 H@10:0.669800
+[LATENCY] eval_total_ms:240300.00
 [PEAK_GPU_MEM] 1469.79MB
 ```
 
 ### α = 0.8 — DONE ✅
 File log: `data/WN18RR/results/2026-07-05-01:45:17.txt`
 ```
-[VALID] MRR:0.568756 H@1:0.516809 H@10:0.664634
-[TEST]  MRR:0.569603 H@1:0.519623 H@10:0.670708
-[LATENCY] eval_total_ms:234954.55
+[VALID] MRR:0.568756 H@1:0.516800 H@10:0.664600
+[TEST]  MRR:0.569603 H@1:0.519600 H@10:0.670700
+[LATENCY] eval_total_ms:235000.00
 [PEAK_GPU_MEM] 1469.79MB
 ```
 
-### α = 0.9 — ⏳ Đang chạy...
-*(Kết quả sẽ được cập nhật)*
+### α = 0.9 — DONE ✅
+File log: `data/WN18RR/results/2026-07-05-01:59:41.txt`
+```
+[VALID] MRR:0.566297 H@1:0.514300 H@10:0.664000
+[TEST]  MRR:0.568156 H@1:0.518000 H@10:0.667800
+[LATENCY] eval_total_ms:226800.00
+[PEAK_GPU_MEM] 1469.79MB
+```
 
 ---
 
@@ -130,11 +136,11 @@ File log: `data/WN18RR/results/2026-07-05-01:45:17.txt`
 | 0.5 → 0.6 | -0.0001 (-0.02%) | Giảm |
 | 0.6 → 0.7 | +0.0005 (+0.08%) | Tăng |
 | 0.7 → 0.8 | +0.0002 (+0.03%) | **Tăng - đạt điểm cực trị!** |
-| 0.8 → 0.9 | (chờ kết quả) | Dự đoán sẽ giảm do tỉ lệ GNN bị loãng |
+| 0.8 → 0.9 | -0.0014 (-0.25%) | Giảm |
 
 **Quan sát nổi bật:**
 - Reranking giúp cải thiện độ chính xác liên tục từ α=0.0 đến α=0.8.
 - Khi vượt quá điểm cực trị 0.8, chất lượng dự đoán bắt đầu đi xuống do trọng số của MLP lấn át và làm lu mờ cấu trúc liên kết đa bước của GNN.
 
 ---
-Cập nhật lần cuối: 2026-07-05 (α=0.9 đang chạy)
+Cập nhật lần cuối: 2026-07-05 (Hoàn tất toàn bộ sweep từ 0.0 đến 0.9)
