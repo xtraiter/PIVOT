@@ -234,28 +234,46 @@ So sánh hai điểm vận hành tương đương về độ phủ: **MLP @ K = 
 
 ## Phép Thử Post-hoc Reranking
 
-### A. Tại Sao Không Joint Train GNN + MLP?
+### A. Tại Sao Không Joint Train GNN + MLP? (Thí Nghiệm Phản Chứng)
 
-> **Phản biện:** *"Joint Training GNN trên MLP-filtered subgraph thì GNN sẽ học được ngữ nghĩa trực tiếp. Tại sao lại dùng post-hoc thay vì end-to-end?"*
+> **Phản biện học thuật:**  
+> *"Tại sao không huấn luyện đồng thời (Joint Training) GNN trực tiếp trên MLP-filtered subgraph để GNN tự động học các đặc trưng ngữ nghĩa này một cách end-to-end, thay vì tách rời thành Post-hoc Reranking?"*
 
-**Trả lời:** **Connectivity Starvation** — MLP lọc bỏ các intermediate nodes làm "bridge" cho GNN:
+**Trả lời:** **Hiện tượng Đói kết nối (Connectivity Starvation)**. 
+
+GNN hoạt động dựa trên cơ chế truyền tin (Message Passing) qua cấu trúc liên kết đa bước (Multi-hop path). MLP Pruning lọc các node dựa trên các đặc trưng tĩnh cục bộ (local features), do đó nó sẽ loại bỏ các node trung gian (bridge nodes) có PPR score thấp hoặc không trực tiếp khớp với query ngữ nghĩa `q`.
 
 ```
-Multi-hop path GNN cần: u --r1--> A --r2--> B --q--> v (tail)
-Nếu MLP bỏ node A (PPR thấp, ít liên quan q):
-  u ----×---- B --q--> v  →  GNN mất đường đi!
+Đường đi truyền tin GNN cần:  u --r1--> A --r2--> B --q--> v (tail)
+Nếu MLP loại bỏ node trung gian A:
+  u ---- X ---- B --q--> v (Đường đi truyền tin bị chặt đứt hoàn toàn!)
 ```
 
-Kết quả thực nghiệm:
+Do đó, việc lọc subgraph quá sớm khiến GNN bị "đói kết nối" và không thể tìm thấy đường đi lập luận đa bước đến đích.
 
-| Phương pháp | Test MRR | So với Baseline |
-|:-----------|:--------:|:---------------:|
-| PPR-only (baseline) | 0.5644 | — |
-| Joint Training (GNN + filtered subgraph) | ~0.41 | −0.15 (**FAIL**) |
-| Manual edge injection (`add_manual_edges`) | ~0.34 | −0.22 (**WORSE**) |
-| **Post-hoc Reranking (alpha=0.8)** | **0.5696** | **+0.0052** ✅ |
+Để kiểm chứng, chúng tôi đã thực hiện **2 thí nghiệm phản chứng thực tế** (kết quả trích xuất trực tiếp từ log file trên đĩa):
 
-Việc chèn cạnh ảo (`add_manual_edges`) còn tệ hơn vì hàng nghìn cạnh đồng nhất làm **nhiễu loạn semantic của GNN message passing**.
+#### 1. Thí nghiệm Joint Training (GNN + filtered subgraph)
+- **Cấu hình:** Bật `use_learned_pruning=True`, huấn luyện GNN trực tiếp trên subgraph đã bị prune bởi MLP Pruning.
+- **Tệp log minh chứng:** [2026-07-01-02:26:20.txt](file:///home/vanba/KLTN/one-shot-subgraph/data/WN18RR/results/2026-07-01-02:26:20.txt)
+- **Thông số chạy:** `seed=42`, `topk=0.1`.
+- **Kết quả:** Đạt Test MRR = **0.4112** (Valid MRR = **0.4119**), **sụt giảm thảm hại −0.1532 MRR** so với baseline! Điều này khẳng định giả thuyết GNN bị mất khả năng lan truyền thông tin do mất kết nối cấu trúc.
+
+#### 2. Thí nghiệm Chèn cạnh ảo trực tiếp (Manual Edge Injection)
+- **Ý tưởng:** Để bù đắp cho sự mất kết nối ở trên, ta chèn thêm các cạnh ảo trực tiếp nối từ source `u` đến toàn bộ candidate set (`add_manual_edges=True`) để duy trì liên kết.
+- **Tệp log minh chứng:** [2026-07-01-07:00:38.txt](file:///home/vanba/KLTN/one-shot-subgraph/data/WN18RR/results/2026-07-01-07:00:38.txt)
+- **Thông số chạy:** `seed=42`, `topk=0.1`, `use_learned_pruning=True`.
+- **Kết quả:** Đạt Test MRR = **0.3497** (Valid MRR = **0.3551**), **sụt giảm cực kỳ nghiêm trọng −0.2147 MRR**! 
+- **Biện giải:** Việc chèn thêm hàng ngàn cạnh ảo có cùng quan hệ `q` vào subgraph đã tạo ra một lượng **nhiễu thông tin khổng lồ**, làm loãng cơ chế lan truyền trọng số thông điệp của GNN và phá hủy hoàn toàn cấu trúc đồ thị nguyên bản.
+
+**Kết luận:** Sự kết hợp end-to-end hay chèn cạnh ảo đều phá vỡ tính toàn vẹn của cấu trúc đồ thị. Phương án tối ưu duy nhất là **Post-hoc Reranking**: Giữ nguyên đồ thị đầy đủ cho GNN lan truyền thông điệp lập luận, sau đó kết hợp tuyến tính điểm số của GNN và MLP ở giai đoạn xếp hạng cuối cùng.
+
+| Cấu hình Thí nghiệm | Tệp tin Log trên Đĩa | Test MRR | So với Baseline | Kết luận thực nghiệm |
+|:---|:---:|:---:|:---:|:---|
+| **PPR-only Baseline** | `2026-06-24-13:15:51.txt` | **0.5644** | — | Mốc đối chứng ban đầu |
+| **Joint GNN + MLP** | `2026-07-01-02:26:20.txt` | **0.4112** | **−0.1532** | ❌ **FAIL** (Đói kết nối cấu trúc) |
+| **GNN + MLP + Manual Edges** | `2026-07-01-07:00:38.txt` | **0.3497** | **−0.2147** | ❌ **WORSE** (Nhiễu loạn thông tin thông điệp) |
+| **PIVOT Post-hoc Rerank (α=0.8)** | `2026-07-05-01:45:17.txt` | **0.5696** | **+0.0052** |  **TỐI ƯU** (Giữ nguyên cấu trúc + Bổ trợ ngữ nghĩa) |
 
 ### B. Cơ Chế Post-hoc Reranking
 
