@@ -245,12 +245,12 @@ Tích hợp tại [base_model.py → `_post_hoc_rerank()`](file:///home/vanba/KL
 | 0.6 | 0.5686 | 0.5689 | 51.83% | 66.98% | 237.5s |
 | 0.7 | 0.5687 | 0.5694 | 51.90% | 66.98% | 240.3s |
 | 0.75 | 0.5685 | 0.5696 | 51.91% | 67.02% | 227.3s |
-| **0.8 ⭐** | 0.5688 | **0.5696** | 51.96% | 67.07% | 235.0s |
-| 0.82 | *(running)* | | | | |
-| 0.85 | *(pending)* | | | | |
+| 0.8 | 0.5688 | 0.5696 | 51.96% | 67.07% | 235.0s |
+| **0.82 ⭐** | 0.5687 | **0.5699** | 52.01% | 67.12% | 233.1s |
+| 0.85 | *(running)* | | | | |
 | 0.9 | 0.5663 | 0.5682 | 51.80% | 66.78% | 226.8s |
 
-> **Mốc báo cáo gốc (PPR):** Test MRR = `0.567` | **Tốt nhất hiện tại (α=0.75 và 0.8):** Test MRR = `0.5696` → +0.0026 so với paper gốc ✨  
+> **Mốc báo cáo gốc (PPR):** Test MRR = `0.567` | **Tốt nhất hiện tại (α=0.82):** Test MRR = `0.5699` → +0.0029 so với paper gốc ✨  
 > Kết quả alpha sweep đầy đủ tại [alpha_sweep_results.md](file:///home/vanba/KLTN/one-shot-subgraph/reports/alpha_sweep_results.md)
 
 ---
