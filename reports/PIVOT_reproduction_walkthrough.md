@@ -302,8 +302,8 @@ Do đó, việc lọc subgraph quá sớm khiến GNN bị "đói kết nối" v
 
 Để kiểm chứng, chúng tôi đã thực hiện **2 thí nghiệm phản chứng thực tế** (kết quả trích xuất trực tiếp từ log file trên đĩa):
 
-#### 1. Thí nghiệm Joint Training (GNN + filtered subgraph)
-- **Cấu hình:** Bật `use_learned_pruning=True`, huấn luyện GNN trực tiếp trên subgraph đã bị prune bởi MLP Pruning.
+#### 1. Thí nghiệm Joint Training thuần túy (100% GNN + 100% MLP Subgraph)
+- **Cấu hình:** Huấn luyện GNN từ đầu trực tiếp trên subgraph chỉ được lọc bởi MLP Pruning (không có fallback bảo toàn kết nối PPR).
 - **Minh chứng log tóm tắt (Trích từ tệp `data/WN18RR/results/2026-07-01-02:26:20.txt`):**
 ```
 Namespace(data_path='./data/WN18RR/', seed=42, topk=0.1, topm=-1.0, gpu=0, fact_ratio=0.95, val_num=-1, epoch=200, layer=6, batchsize=16, cpu=8, weight='', add_manual_edges=False, remove_1hop_edges=False, only_eval=False, not_shuffle_train=False, use_learned_pruning=True, pruning_model_path='./data/WN18RR/budget_results/pruning_mlp_v2_best_seed_42.pt')
@@ -333,14 +333,31 @@ Namespace(data_path='./data/WN18RR/', seed=42, topk=0.1, topm=-1.0, gpu=0, fact_
 - **Kết quả:** Đạt Test MRR = **0.3497** (Valid MRR = **0.3551**), **sụt giảm cực kỳ nghiêm trọng −0.2147 MRR**! 
 - **Biện giải:** Việc chèn thêm hàng ngàn cạnh ảo có cùng quan hệ `q` vào subgraph đã tạo ra một lượng **nhiễu thông tin khổng lồ**, làm loãng cơ chế lan truyền trọng số thông điệp của GNN và phá hủy hoàn toàn cấu trúc đồ thị nguyên bản.
 
-**Kết luận:** Sự kết hợp end-to-end hay chèn cạnh ảo đều phá vỡ tính toàn vẹn của cấu trúc đồ thị. Phương án tối ưu duy nhất là **Post-hoc Reranking**: Giữ nguyên đồ thị đầy đủ cho GNN lan truyền thông điệp lập luận, sau đó kết hợp tuyến tính điểm số của GNN và MLP ở giai đoạn xếp hạng cuối cùng.
+#### 3. Thí nghiệm Giải cứu bằng Hybrid Subgraph Selection (50% MLP + 50% PPR)
+- **Ý tưởng:** Chọn 50% subgraph budget bằng điểm MLP Pruning và 50% bằng điểm PPR heuristic để vừa tích hợp tri thức ngữ nghĩa vừa duy trì các dense relational paths làm cầu nối truyền thông điệp cho GNN.
+- **Minh chứng log tóm tắt (Trích từ tệp `data/WN18RR/results/2026-07-01-08:45:26.txt`):**
+```
+Namespace(data_path='./data/WN18RR/', seed=42, topk=0.1, topm=-1.0, gpu=0, fact_ratio=0.95, val_num=-1, epoch=200, layer=6, batchsize=16, cpu=8, weight='', add_manual_edges=False, remove_1hop_edges=False, only_eval=False, not_shuffle_train=False, use_learned_pruning=True, pruning_model_path='./data/WN18RR/budget_results/pruning_mlp_v2_best_seed_42.pt')
+
+Epoch 116:
+[VALID] MRR:0.562582 H@1:0.511042 H@10:0.661997
+[TEST]  MRR:0.563637 H@1:0.511806 H@10:0.657466
+[TIME] train:17672.8759 inference:127.5968
+[LATENCY] eval_total_ms:127596.76 data_prep_ms:4032.35 forward_ms:65297.95 ranking_ms:52360.41
+[PEAK_GPU_MEM] 975.92MB
+```
+- **Kết quả:** Đạt Test MRR = **0.5636** (Valid MRR = **0.5626**), **chỉ suy giảm vô cùng nhẹ −0.0008 MRR** so với baseline.
+- **Biện giải:** Thí nghiệm này củng cố mạnh mẽ giả thuyết "Connectivity Starvation". Khi có 50% PPR nodes làm cầu nối liên kết cấu trúc đồ thị, GNN đã được giải cứu và có thể hội tụ thành công. Tuy nhiên, dù độ chính xác khôi phục tốt, nó vẫn không đạt hiệu năng vượt trội như Post-hoc Reranking (0.5696) và đòi hỏi phải huấn luyện lại GNN từ đầu rất tốn kém tài nguyên.
+
+**Kết luận:** Phương án tối ưu duy nhất là **Post-hoc Reranking**: Giữ nguyên đồ thị đầy đủ cho GNN lan truyền thông điệp lập luận, sau đó kết hợp tuyến tính điểm số của GNN và MLP ở giai đoạn xếp hạng cuối cùng.
 
 | Cấu hình Thí nghiệm | Tệp tin Log liên quan | Test MRR | So với Baseline | Kết luận thực nghiệm |
 |:---|:---:|:---:|:---:|:---|
 | **PPR-only Baseline** | `data/WN18RR/results/2026-06-24-13:15:51.txt` | **0.5644** | — | Mốc đối chứng ban đầu |
-| **Joint GNN + MLP** | `data/WN18RR/results/2026-07-01-02:26:20.txt` | **0.4112** | **−0.1532** | ❌ **FAIL** (Đói kết nối cấu trúc) |
-| **GNN + MLP + Manual Edges** | `data/WN18RR/results/2026-07-01-07:00:38.txt` | **0.3497** | **−0.2147** | ❌ **WORSE** (Nhiễu loạn thông tin thông điệp) |
-| **PIVOT Post-hoc Rerank (α=0.8)** | `data/WN18RR/results/2026-07-05-01:45:17.txt` | **0.5696** | **+0.0052** |  **TỐI ƯU** (Giữ nguyên cấu trúc + Bổ trợ ngữ nghĩa) |
+| **Joint GNN + MLP (100% MLP)** | `data/WN18RR/results/2026-07-01-02:26:20.txt` | **0.4112** | **−0.1532** | ❌ **FAIL** (Đói kết nối cấu trúc) |
+| **GNN + MLP + Manual Edges** | `data/WN18RR/results/2026-07-01-07:00:38.txt` | **0.3497** | **−0.2147** | ❌ **WORSE** (Nhiễu loạn thông điệp quan hệ) |
+| **Hybrid GNN + MLP (50/50)** | `data/WN18RR/results/2026-07-01-08:45:26.txt` | **0.5636** | **−0.0008** | ⚠️ **KHÁ** (Giải cứu nhờ PPR structural bridge) |
+| **PIVOT Post-hoc Rerank (α=0.8)** | `data/WN18RR/results/2026-07-05-01:45:17.txt` | **0.5696** | **+0.0052** |  **TỐI ƯU** (Giữ nguyên cấu trúc + Rerank ngữ nghĩa) |
 
 ### B. Cơ Chế Post-hoc Reranking
 
