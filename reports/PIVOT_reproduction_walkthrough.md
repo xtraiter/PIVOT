@@ -211,7 +211,7 @@ Kết quả thực nghiệm:
 | PPR-only (baseline) | 0.5644 | — |
 | Joint Training (GNN + filtered subgraph) | ~0.41 | −0.15 (**FAIL**) |
 | Manual edge injection (`add_manual_edges`) | ~0.34 | −0.22 (**WORSE**) |
-| **Post-hoc Reranking (alpha=0.7)** | **0.5694** | **+0.0050** ✅ |
+| **Post-hoc Reranking (alpha=0.8)** | **0.5696** | **+0.0052** ✅ |
 
 Việc chèn cạnh ảo (`add_manual_edges`) còn tệ hơn vì hàng nghìn cạnh đồng nhất làm **nhiễu loạn semantic của GNN message passing**.
 
@@ -236,6 +236,21 @@ Tích hợp tại [base_model.py → `_post_hoc_rerank()`](file:///home/vanba/KL
 
 | alpha | Valid MRR | **Test MRR** | Test H@1 | Test H@10 | Eval Time |
 |:-----:|:---------:|:------------:|:--------:|:---------:|:---------:|
+| 0.0 | 0.5644 | 0.5644 | 51.18% | 66.34% | 164.7s |
+| 0.1 | 0.5671 | 0.5667 | 51.47% | 66.77% | 227.4s |
+| 0.2 | 0.5675 | 0.5676 | 51.66% | 66.75% | 236.7s |
+| 0.3 | 0.5677 | 0.5682 | 51.75% | 66.82% | 254.9s |
+| 0.4 | 0.5681 | 0.5685 | 51.80% | 66.91% | 242.7s |
+| 0.5 | 0.5679 | 0.5691 | 51.88% | 66.86% | 239.1s |
+| 0.6 | 0.5686 | 0.5689 | 51.83% | 66.98% | 237.5s |
+| 0.7 | 0.5687 | 0.5694 | 51.90% | 66.98% | 240.3s |
+| **0.8 ⭐** | 0.5688 | **0.5696** | 51.96% | 67.07% | 235.0s |
+| 0.9 | *(running)* | | | | |
+
+> **Mốc báo cáo gốc (PPR):** Test MRR = `0.567` | **Tốt nhất hiện tại (α=0.8):** Test MRR = `0.5696` → +0.0026 so với paper gốc ✨  
+> Kết quả alpha sweep đầy đủ tại [alpha_sweep_results.md](file:///home/vanba/KLTN/one-shot-subgraph/reports/alpha_sweep_results.md)
+
+-----:|:---------:|:------------:|:--------:|:---------:|:---------:|
 | 0.0 | 0.5644 | 0.5644 | 51.18% | 66.34% | 164.7s |
 | 0.1 | 0.5671 | 0.5667 | 51.47% | 66.77% | 227.4s |
 | 0.2 | 0.5675 | 0.5676 | 51.66% | 66.75% | 236.7s |
@@ -279,10 +294,10 @@ Dưới đây là bảng đối chiếu hiệu năng giữa phương pháp gốc
 
 | Chỉ số | Checkpoint gốc tác giả | PIVOT Baseline (PPR-only)* | PIVOT Reranking (α=0.4) | So với Gốc |
 |:---|:---:|:---:|:---:|:---:|
-| **Test MRR** | 0.5677 | 0.5644 | **0.5694** | **+0.0017** (Vượt trội) |
+| **Test MRR** | 0.5677 | 0.5644 | **0.5696** | **+0.0019** (Vượt trội) |
 | Test H@1 | 51.40% | 51.18% | **51.80%** | **+0.40%** |
 | Test H@10 | 66.62% | 66.34% | **66.91%** | **+0.29%** |
-| **Inference Time (s)** | 439.62s | **157.7s** | **240.3s** | **~1.8x Nhanh hơn** ⚡ |
+| **Inference Time (s)** | 439.62s | **157.7s** | **235.0s** | **~1.9x Nhanh hơn** ⚡ |
 | Peak VRAM (eval) | N/A | ~1.5 GB | ~1.5 GB | Tối ưu hóa bộ nhớ cực tốt |
 
 *\* Kết quả PIVOT Baseline lấy trên Seed 42 để đồng nhất cấu hình.*
