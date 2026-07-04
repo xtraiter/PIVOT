@@ -80,7 +80,7 @@ Result:
 
 WN18RR dataset:
 ```
-python3 train_auto.py --data_path ./data/WN18RR/ --batchsize 16 --gpu 0 --topk 0.1 --topm -1 --fact_ratio 0.95 --seed 456
+python3 train_auto.py --data_path ./data/WN18RR/ --batchsize 16 --gpu 0 --topk 0.1 --topm -1 --fact_ratio 0.95
 ```
 
 NELL995 dataset:
@@ -92,72 +92,3 @@ YAGO3-10 dataset:
 ```
 python3 train_auto.py --data_path ./data/YAGO --batchsize 4 --gpu 0 --topk 0.1 --topm -1 --fact_ratio 0.995
 ```
-
-## Training on Vast.ai with Auto-Push to GitHub
-
-When running on a remote cloud GPU provider like Vast.ai, you can automatically commit and push training logs (in `results/`) and model checkpoints (in `saveModel/`) to GitHub at the end of each epoch and when training completes.
-
-### 1. Configure Git on your Vast.ai Instance
-Before running the training script, configure your Git username, email, and credentials on the container so it has permission to push to your repository:
-```bash
-git config --global user.name "Your Name"
-git config --global user.email "your.email@example.com"
-```
-
-To authenticate, you can either:
-- **SSH Key (Recommended)**: Generate an SSH key on the instance, add it to your GitHub profile, and clone the repository using the SSH URL (`git@github.com:username/repo.git`).
-- **Personal Access Token (PAT)**: Configure git to cache credentials or clone using your username and GitHub token:
-  ```bash
-  git remote set-url origin https://<your_github_token>@github.com/xtraiter/PIVOT.git
-  ```
-
-### 2. Run Training
-Since the model is optimized with mathematical simplification of GNN projections and **Gradient Checkpointing**, training WN18RR with `batchsize 16` uses less than **4GB of VRAM** (down from >16GB), allowing it to run extremely fast and safe on any card like RTX 3090, 4090, or even lower-end GPUs.
-
-Run WN18RR training with batchsize 16 and seed 456:
-```bash
-python3 train_auto.py --data_path ./data/WN18RR/ --batchsize 16 --gpu 0 --topk 0.1 --topm -1 --fact_ratio 0.95 --seed 456
-```
-The script will automatically print the sync status to GitHub after every best checkpoint:
-`==> Successfully pushed checkpoints and logs to GitHub!`
-
-## Results
-
-| dataset  | Test MRR | Test Hit@1 | Test Hit@10 |
-| -------- | -------- | ---------- | ----------- |
-| WN18RR   | 0.5677   | 0.5140     | 0.6662      |
-| NELL995  | 0.5472   | 0.4847     | 0.6508      |
-| YAGO3-10 | 0.6064   | 0.5403     | 0.7218      |
-
-
-## Hyper-parameter searching
-
-Taking WN18RR as an example, we run the searching of hyper-parameter by: 
-```
-python3 search_auto.py --data_path ./data/WN18RR/  --gpu 0 --topk 0.1 --cpu 2 --fact_ratio 0.95 --batchsize 16 --search
-```
-
-This script shows the searched hyper-parameters:
-```
-python3 showResults.py --file ./results/WN18RR/search_log.pkl
-```
-
-## Citation
-
-If you find this repository useful in your research, please kindly cite our paper.
-
-```
-@inproceedings{zhou2024less,
-    title       = {Less is More: One-shot Subgraph Reasoning on Large-scale Knowledge Graphs},
-    author      = {Zhanke Zhou and Yongqi Zhang and Jiangchao Yao and Quanming Yao and Bo Han},
-    booktitle   = {The Twelfth International Conference on Learning Representations},
-    year        = {2024}
-}
-```
-
-## Reference papers
-We also recommend these paper for reference.
-- ``KDD 2023`` Adaprop: Learning Adaptive Propagation for Graph Neural Network Based Knowledge Graph Reasoning. [[paper]](https://arxiv.org/pdf/2205.15319.pdf) [[code]](https://github.com/LARS-research/AdaProp)
-- ``ACL 2022`` KGTuner: Efficient Hyper-parameter Search for Knowledge Graph Learning. [[paper]](https://arxiv.org/pdf/2205.02460.pdf) [[code]](https://github.com/LARS-research/KGTuner)
-- ``WebConf 2022`` Knowledge Graph Reasoning with Relational Digraph. [[paper]](https://arxiv.org/pdf/2108.06040.pdf) [[code]](https://github.com/LARS-research/RED-GNN)
-
