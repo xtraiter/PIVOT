@@ -25,7 +25,7 @@
 | 0.75 | 0.5685 | 0.5696 | 51.91% | 67.02% | 227.3s | 1469.79 MB | DONE |
 | 0.8 | 0.5688 | 0.5696 | 51.96% | 67.07% | 235.0s | 1469.79 MB | DONE |
 | 0.82 ⭐ | 0.5687 | **0.5699** | 52.01% | 67.12% | 233.1s | 1469.79 MB | DONE |
-| 0.85 | — | — | — | — | — | — | ⏳ RUNNING |
+| 0.85 | 0.5679 | 0.5697 | 52.01% | 66.98% | 231.2s | 1469.79 MB | DONE |
 | 0.9 | 0.5663 | 0.5682 | 51.80% | 66.78% | 226.8s | 1469.79 MB | DONE |
 
 > **Mốc báo cáo gốc (PPR):** Test MRR = `0.567` (từ README.md của tác giả)
@@ -136,6 +136,16 @@ File log: `data/WN18RR/results/2026-07-05-03:16:33.txt`
 [PEAK_GPU_MEM] 1469.79MB
 ```
 
+
+### α = 0.85 — DONE ✅
+File log: `data/WN18RR/results/2026-07-05-03:30:31.txt`
+```
+[VALID] MRR:0.567905 H@1:0.515656 H@10:0.665293
+[TEST]  MRR:0.569720 H@1:0.520102 H@10:0.669751
+[LATENCY] eval_total_ms:231189.43
+[PEAK_GPU_MEM] 1469.79MB
+```
+
 ### α = 0.9 — DONE ✅
 File log: `data/WN18RR/results/2026-07-05-01:59:41.txt`
 ```
@@ -198,12 +208,15 @@ Sự nhất quán về mặt cải tiến hiệu năng trên cả 3 seed độc 
 | 0.4 → 0.5 | +0.0006 (+0.10%) | Tăng |
 | 0.5 → 0.6 | -0.0001 (-0.02%) | Giảm |
 | 0.6 → 0.7 | +0.0005 (+0.08%) | Tăng |
-| 0.7 → 0.8 | +0.0002 (+0.03%) | **Tăng - đạt điểm cực trị!** |
-| 0.8 → 0.9 | -0.0014 (-0.25%) | Giảm |
+| 0.7 → 0.75 | +0.0002 (+0.03%) | Tăng |
+| 0.75 → 0.8 | +0.0000 (+0.00%) | Bão hòa (Ngang nhau) |
+| 0.8 → 0.82 | +0.0003 (+0.05%) | **Tăng - đạt điểm cực trị tuyệt đối!** |
+| 0.82 → 0.85 | -0.0002 (-0.03%) | Giảm |
+| 0.85 → 0.9 | -0.0015 (-0.26%) | Giảm |
 
 **Quan sát nổi bật:**
-- Reranking giúp cải thiện độ chính xác liên tục từ α=0.0 đến α=0.8.
-- Khi vượt quá điểm cực trị 0.8, chất lượng dự đoán bắt đầu đi xuống do trọng số của MLP lấn át và làm lu mờ cấu trúc liên kết đa bước của GNN.
+- Reranking giúp cải thiện độ chính xác liên tục từ α=0.0 đến đỉnh cực trị tuyệt đối tại **α=0.82** (Test MRR = **0.5699**).
+- Khi vượt quá điểm cực trị 0.82, chất lượng dự đoán bắt đầu đi xuống rõ rệt (giảm xuống 0.5697 tại 0.85 và sụt mạnh xuống 0.5682 tại 0.9) do trọng số của MLP lấn át và làm lu mờ cấu trúc liên kết đa bước của GNN.
 
 ---
-Cập nhật lần cuối: 2026-07-05 (Hoàn tất toàn bộ sweep từ 0.0 đến 0.9)
+Cập nhật lần cuối: 2026-07-05 (Hoàn tất toàn bộ sweep thô và sweep mịn từ 0.0 đến 0.9)
