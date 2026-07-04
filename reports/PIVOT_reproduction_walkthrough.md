@@ -208,7 +208,7 @@ Kết quả thực nghiệm:
 | PPR-only (baseline) | 0.5644 | — |
 | Joint Training (GNN + filtered subgraph) | ~0.41 | −0.15 (**FAIL**) |
 | Manual edge injection (`add_manual_edges`) | ~0.34 | −0.22 (**WORSE**) |
-| **Post-hoc Reranking (alpha=0.2)** | **0.5676** | **+0.003** ✅ |
+| **Post-hoc Reranking (alpha=0.3)** | **0.5682** | **+0.004** ✅ |
 
 Việc chèn cạnh ảo (`add_manual_edges`) còn tệ hơn vì hàng nghìn cạnh đồng nhất làm **nhiễu loạn semantic của GNN message passing**.
 
@@ -233,13 +233,14 @@ Tích hợp tại [base_model.py → `_post_hoc_rerank()`](file:///home/vanba/KL
 
 | alpha | Valid MRR | **Test MRR** | Test H@1 | Test H@10 | Eval Time |
 |:-----:|:---------:|:------------:|:--------:|:---------:|:---------:|
-| 0.0 (Baseline) | 0.5644 | **0.5644** | 51.18% | 66.34% | 164.7s |
-| 0.1 | 0.5671 | **0.5667** | 51.47% | 66.77% | 227.4s |
-| **0.2** ⭐ | **0.5675** | **0.5676** | **51.66%** | **66.75%** | 236.7s |
-| 0.3 | *(running)* | | | | |
-| 0.4 | *(pending)* | | | | |
+| 0.0 (Baseline) | 0.5644 | 0.5644 | 51.18% | 66.34% | 164.7s |
+| 0.1 | 0.5671 | 0.5667 | 51.47% | 66.77% | 227.4s |
+| 0.2 | 0.5675 | 0.5676 | 51.66% | 66.75% | 236.7s |
+| **0.3** ⭐ | **0.5677** | **0.5682** | **51.75%** | **66.82%** | 254.9s |
+| 0.4 | *(running)* | | | | |
 | 0.5 | *(pending)* | | | | |
 
+> **Mốc báo cáo gốc:** Test MRR = `0.567` | **Tốt nhất hiện tại (α=0.3):** Test MRR = `0.5682` → +0.001 so với paper gốc ✨  
 > Kết quả alpha sweep đầy đủ tại [alpha_sweep_results.md](file:///home/vanba/KLTN/one-shot-subgraph/reports/alpha_sweep_results.md)
 
 ---
