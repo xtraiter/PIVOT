@@ -20,6 +20,10 @@
 | 0.3 | 0.5677 | 0.5682 | 51.75% | 66.82% | 254.9s | 1469.79 MB | DONE |
 | 0.4 | 0.5681 | 0.5685 | 51.80% | 66.91% | 242.7s | 1469.79 MB | DONE |
 | 0.5 ⭐ | 0.5679 | **0.5691** | 51.88% | 66.86% | 239.1s | 1469.79 MB | DONE |
+| 0.6 | — | — | — | — | — | — | ⏳ RUNNING |
+| 0.7 | — | — | — | — | — | — | ⏳ PENDING |
+| 0.8 | — | — | — | — | — | — | ⏳ PENDING |
+| 0.9 | — | — | — | — | — | — | ⏳ PENDING |
 
 > **Mốc báo cáo gốc (PPR):** Test MRR = `0.567` (từ README.md của tác giả)
 > **Tốt nhất hiện tại (α=0.5):** Test MRR = `0.5691` — **Vượt kết quả báo cáo gốc** ✨
@@ -82,6 +86,18 @@ File log: `data/WN18RR/results/2026-07-05-00:52:03.txt`
 [PEAK_GPU_MEM] 1469.79MB
 ```
 
+### α = 0.6 — ⏳ Đang chạy...
+*(Kết quả sẽ được cập nhật)*
+
+### α = 0.7 — ⏳ Đang chờ...
+*(Kết quả sẽ được cập nhật)*
+
+### α = 0.8 — ⏳ Đang chờ...
+*(Kết quả sẽ được cập nhật)*
+
+### α = 0.9 — ⏳ Đang chờ...
+*(Kết quả sẽ được cập nhật)*
+
 ---
 
 ## Phân Tích Xu Hướng
@@ -93,10 +109,14 @@ File log: `data/WN18RR/results/2026-07-05-00:52:03.txt`
 | 0.2 → 0.3 | +0.0006 (+0.11%) | Tăng |
 | 0.3 → 0.4 | +0.0003 (+0.05%) | Tăng |
 | 0.4 → 0.5 | +0.0006 (+0.10%) | **Tăng - đạt điểm cực trị!** |
+| 0.5 → 0.6 | (chờ kết quả) | Dự đoán sẽ giảm do tỉ lệ GNN bị loãng |
+| 0.6 → 0.7 | (chờ kết quả) | Dự đoán sẽ giảm do tỉ lệ GNN bị loãng |
+| 0.7 → 0.8 | (chờ kết quả) | Dự đoán sẽ giảm do tỉ lệ GNN bị loãng |
+| 0.8 → 0.9 | (chờ kết quả) | Dự đoán sẽ giảm do tỉ lệ GNN bị loãng |
 
 **Quan sát nổi bật:**
 - Reranking giúp cải thiện độ chính xác liên tục từ α=0.0 đến α=0.5.
 - Khi vượt quá điểm cực trị 0.5, chất lượng dự đoán bắt đầu đi xuống do trọng số của MLP lấn át và làm lu mờ cấu trúc liên kết đa bước của GNN.
 
 ---
-Cập nhật lần cuối: 2026-07-05
+Cập nhật lần cuối: 2026-07-05 (α=0.6 đang chạy)

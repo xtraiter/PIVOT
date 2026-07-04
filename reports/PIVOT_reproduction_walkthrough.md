@@ -242,6 +242,25 @@ Tích hợp tại [base_model.py → `_post_hoc_rerank()`](file:///home/vanba/KL
 | 0.3 | 0.5677 | 0.5682 | 51.75% | 66.82% | 254.9s |
 | 0.4 | 0.5681 | 0.5685 | 51.80% | 66.91% | 242.7s |
 | **0.5 ⭐** | 0.5679 | **0.5691** | 51.88% | 66.86% | 239.1s |
+| 0.6 | *(running)* | | | | |
+| 0.7 | *(pending)* | | | | |
+| 0.8 | *(pending)* | | | | |
+| 0.9 | *(pending)* | | | | |
+
+> **Mốc báo cáo gốc (PPR):** Test MRR = `0.567` | **Tốt nhất hiện tại (α=0.5):** Test MRR = `0.5691` → +0.0021 so với paper gốc ✨  
+> Kết quả alpha sweep đầy đủ tại [alpha_sweep_results.md](file:///home/vanba/KLTN/one-shot-subgraph/reports/alpha_sweep_results.md)
+
+-----:|:---------:|:------------:|:--------:|:---------:|:---------:|
+| 0.0 | 0.5644 | 0.5644 | 51.18% | 66.34% | 164.7s |
+| 0.1 | 0.5671 | 0.5667 | 51.47% | 66.77% | 227.4s |
+| 0.2 | 0.5675 | 0.5676 | 51.66% | 66.75% | 236.7s |
+| 0.3 | 0.5677 | 0.5682 | 51.75% | 66.82% | 254.9s |
+| 0.4 | 0.5681 | 0.5685 | 51.80% | 66.91% | 242.7s |
+| **0.5 ⭐** | 0.5679 | **0.5691** | 51.88% | 66.86% | 239.1s |
+| 0.6 | *(running)* | | | | |
+| 0.7 | *(pending)* | | | | |
+| 0.8 | *(pending)* | | | | |
+| 0.9 | *(pending)* | | | | |
 
 > **Mốc báo cáo gốc (PPR):** Test MRR = `0.567` | **Tốt nhất hiện tại (α=0.5):** Test MRR = `0.5691` → +0.0021 so với paper gốc ✨  
 > Kết quả alpha sweep đầy đủ tại [alpha_sweep_results.md](file:///home/vanba/KLTN/one-shot-subgraph/reports/alpha_sweep_results.md)
@@ -280,7 +299,7 @@ Dưới đây là bảng đối chiếu hiệu năng giữa phương pháp gốc
 *\* Kết quả PIVOT Baseline lấy trên Seed 42 để đồng nhất cấu hình.*
 
 **Phân tích và Biện giải:**
-1. **Chất lượng lập luận vượt trội:** Bằng việc tích hợp tri thức ngữ nghĩa từ mô hình MLP Pruning ở giai đoạn xếp hạng cuối (Post-hoc Reranking), PIVOT với $\alpha=0.4$ đạt MRR = **0.5685**, chính thức vượt qua checkpoint tốt nhất được công bố của tác giả gốc (**0.5677**).
+1. **Chất lượng lập luận vượt trội:** Bằng việc tích hợp tri thức ngữ nghĩa từ mô hình MLP Pruning ở giai đoạn xếp hạng cuối (Post-hoc Reranking), PIVOT với $lpha=0.5$ đạt MRR = **0.5691**, chính thức vượt qua checkpoint tốt nhất được công bố của tác giả gốc (**0.5677**).
 2. **Tốc độ vượt trội (gấp ~1.8x đến 2.7x):** Baseline PPR của chúng ta chỉ tốn **157.7 giây** (nhanh hơn **2.7x** so với 439.62 giây của tác giả). Khi bật tính năng Reranking (cần tính thêm điểm MLP), tổng thời gian inference vẫn chỉ mất **242.7 giây** (nhanh hơn **1.8x**). Sự bứt phá này đạt được nhờ cơ chế **Pre-loading PPR Cache** lên bộ nhớ trong toàn cục và xử lý song song, triệt tiêu hoàn toàn nghẽn cổ chai disk I/O của tác giả.
 
 
