@@ -25,12 +25,15 @@
 Hardware : NVIDIA RTX 5060 Ti 16GB (WSL2 trên Windows)
 Software : Python 3.10, PyTorch 2.1, CUDA 12.1
 Conda env: pivot
-Hyperparams WN18RR:
-  lr=0.0001, hidden_dim=256, attn_dim=8, n_layer=8
+Hyperparams WN18RR (từ params dict, dòng 199 train_auto.py):
+  lr=0.0001, hidden_dim=256, attn_dim=8, n_layer=8 ← layer thực tế
   act=idd, initializer=relation, shortcut=True, readout=multiply
   decay_rate=0.8662, lamb=0.0004, dropout=0.0043
   topk=0.1 (10% nodes), fact_ratio=0.95, batchsize=16
 ```
+
+> **Note:** CLI arg `--layer` default=6, nhưng bị ghi đè tại [train_auto.py:143](file:///home/vanba/KLTN/one-shot-subgraph/train_auto.py#L143): `args.layer = params['n_layer']` = **8**. Checkpoint filenames dùng `args.layer` sau khi ghi đè nên đúng là `layer_8`. Log Namespace in ra `layer=6` (giá trị CLI trước ghi đè) nhưng model thực sự chạy **8 lớp**.
+
 
 ### Reproduce Table 1 (Main Accuracy) — WN18RR
 
