@@ -72,10 +72,16 @@ File log: `data/WN18RR/results/2026-07-05-00:21:09.txt`
 [PEAK_GPU_MEM] 1469.79MB
 ```
 
-### α = 0.4 — ⏳ Đang chạy...
-*(Kết quả sẽ được cập nhật)*
+### α = 0.4 — DONE ✅
+File log: `data/WN18RR/results/2026-07-05-00:37:08.txt`
+```
+[VALID] MRR:0.568096 H@1:0.516645 H@10:0.664799
+[TEST]  MRR:0.568471 H@1:0.518028 H@10:0.669113
+[LATENCY] eval_total_ms:242744.15 data_prep_ms:5552.55 forward_ms:179347.15 ranking_ms:51292.28
+[PEAK_GPU_MEM] 1469.79MB
+```
 
-### α = 0.5 — ⏳ Đang chờ...
+### α = 0.5 — ⏳ Đang chạy...
 *(Kết quả sẽ được cập nhật)*
 
 ---
@@ -86,8 +92,9 @@ File log: `data/WN18RR/results/2026-07-05-00:21:09.txt`
 |:---------|:-----------------:|:---------|
 | 0.0 → 0.1 | +0.0023 (+0.41%) | MLP bổ sung ngữ nghĩa quan hệ rõ ràng |
 | 0.1 → 0.2 | +0.0009 (+0.16%) | Tiếp tục tăng — cực trị đang đến gần |
-| 0.2 → 0.3 | +0.0006 (+0.11%) | **Xu hướng tăng vẫn duy trì — chưa đạt cực trị!** |
-| 0.3 → 0.4 | (chờ kết quả) | Dự đoán đây sẽ là cực trị hoặc bắt đầu giảm |
+| 0.2 → 0.3 | +0.0006 (+0.11%) | Xu hướng tăng vẫn duy trì |
+| 0.3 → 0.4 | +0.0003 (+0.05%) | **Tiếp tục tăng nhẹ — vẫn chưa đạt cực trị!** |
+| 0.4 → 0.5 | (chờ kết quả) | Dự đoán đây sẽ là cực trị hoặc bắt đầu giảm |
 
 **Quan sát nổi bật:** MRR vẫn **tăng đơn điệu** từ α=0.0→0.3 (chưa đạt cực trị).
 Xu hướng tăng đang chậm dần → cực trị có thể nằm trong [0.3, 0.4].
@@ -96,4 +103,4 @@ Xu hướng tăng đang chậm dần → cực trị có thể nằm trong [0.3,
 
 ---
 
-Cập nhật lần cuối: 2026-07-05 (α=0.3 hoàn tất, α=0.4 đang chạy)
+Cập nhật lần cuối: 2026-07-05 (α=0.4 hoàn tất, α=0.5 đang chạy)
