@@ -476,6 +476,31 @@ Dưới đây là bảng đối chiếu hiệu năng giữa phương pháp gốc
 2. **Tốc độ vượt trội (gấp ~1.8x đến 2.7x):** Baseline PPR của chúng ta chỉ tốn **157.7 giây** (nhanh hơn **2.7x** so với 439.62 giây của tác giả). Khi bật tính năng Reranking, tổng thời gian inference trung bình vẫn chỉ mất **247.7 giây** (nhanh hơn **1.8x**). Sự bứt phá này đạt được nhờ cơ chế **Pre-loading PPR Cache** lên bộ nhớ trong toàn cục và xử lý song song, triệt tiêu hoàn toàn nghẽn cổ chai disk I/O của tác giả.
 
 
+---
+
+## Phụ Lục: Huấn Luyện GNN Baseline Cho NELL-995 Từ Đầu (Train From Scratch)
+
+Để thiết lập mốc so sánh baseline nguyên bản cho bộ dữ liệu **NELL-995** giống như với WN18RR, chúng ta đã khởi chạy quá trình huấn luyện mô hình GNN PPR-only baseline từ đầu (train from scratch) trên cả 3 seed (42, 123, 1234) ở chế độ tự động hóa độ chính xác hỗn hợp **AMP FP16**.
+
+Trong quá trình này, hai vấn đề kỹ thuật quan trọng liên quan đến AMP và WSL2 đã được giải quyết:
+
+### 1. Sửa lỗi Dtype Mismatch trong PyTorch AMP
+* **Hiện tượng:** Khi chạy huấn luyện NELL-995 ở chế độ AMP, PyTorch báo lỗi:
+  `RuntimeError: Index put requires the source and destination dtypes match, got Float for the destination and Half for the source.`
+* **Nguyên nhân:** NELL-995 sử dụng cấu hình đọc `readout == 'linear'`. Lớp Linear `self.W_final` khi chạy dưới khối `torch.amp.autocast('cuda')` sẽ tự động tính toán ở kiểu dữ liệu **FP16 (Half)**, do đó output `scores` có kiểu `Half`. Tuy nhiên, tensor `scores_all` dùng để chứa kết quả lại được khởi tạo mặc định bằng `torch.zeros(...)` kiểu **FP32 (Float)**. Phép gán index-put ở dòng 146 của [model.py](file:///home/vanba/KLTN/one-shot-subgraph/model.py) bị lỗi do không đồng nhất kiểu dữ liệu.
+* **Giải pháp:** Cập nhật dòng 145-146 của [model.py](file:///home/vanba/KLTN/one-shot-subgraph/model.py) để cast `scores` sang Float32 đầy đủ trước khi thực hiện gán index-put:
+  ```python
+  scores_all = torch.zeros((n, self.loader.n_ent), dtype=torch.float32, device=scores.device)
+  scores_all[batch_idxs, abs_idxs] = scores.to(dtype=torch.float32)
+  ```
+
+### 2. Tối Ưu Hóa Tránh Lỗi Tràn RAM Hệ Thống (WSL2 Out of Memory)
+* **Hiện tượng:** Khi huấn luyện NELL-995 với số lượng workers mặc định (`--cpu 8`), hệ điều hành Linux trong WSL2 đã kích hoạt bộ giết tiến trình **OOM Killer** và giết chết các worker dataloader `pt_data_worker` của PyTorch.
+* **Nguyên nhân:** NELL-995 có đồ thị liên kết dày đặc và 74,536 entities (lớn hơn nhiều so với WN18RR). Việc chạy 8 worker song song tải dữ liệu cùng với `prefetch_factor = 8` làm cho lượng RAM tiêu thụ vọt lên hơn 30-40GB (vượt quá giới hạn phân bổ RAM của WSL2).
+* **Giải pháp:** Giới hạn số lượng workers xuống còn 2 (`--cpu 2`). Vì bottleneck chính của mô hình NELL là bước lan truyền GNN trên GPU (mất ~1.2 giây/batch) chứ không phải ở CPU I/O, cấu hình 2 worker và prefetch factor là 2 là dư sức cung cấp dữ liệu cho GPU mà không bị nghẽn, đồng thời giảm tổng số lượng batches prefetch đồng thời trên RAM xuống 16 lần, giữ an toàn tuyệt đối cho RAM hệ thống.
+
+---
+
 ## Danh Sách Tệp Tin Đã Thay Đổi
 
 | File | Loại | Mô tả ngắn |
