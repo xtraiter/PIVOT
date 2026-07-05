@@ -212,6 +212,8 @@ class pprSampler():
             return self.ppr_cache[ent]
         ent_ppr_savePath = os.path.join(self.ppr_savePath, f'{int(ent)}.pkl')
         scores = pkl.load(open(ent_ppr_savePath, 'rb'))
+        if len(self.ppr_cache) >= 1000:
+            self.ppr_cache.clear()
         self.ppr_cache[ent] = scores
         return scores
         
