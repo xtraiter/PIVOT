@@ -376,6 +376,28 @@ Tích hợp tại [base_model.py → `_post_hoc_rerank()`](file:///home/vanba/KL
 
 **Không có distribution shift:** GNN vẫn thấy đúng PPR subgraph — chỉ thay đổi ở bước ranking cuối.
 
+#### 🔄 Phân Tích Cơ Chế Xử Lý Runtime (Phương Pháp Chạy 2 Mô Hình Đồng Thời)
+
+Một câu hỏi quan trọng trong thiết kế hệ thống là: **Phương pháp nào đòi hỏi phải chạy đồng thời cả 2 mô hình lúc suy luận (inference)?**
+
+Dưới đây là so sánh cơ chế Runtime của 3 phương pháp chính:
+
+##### 1. Post-hoc Reranking (PIVOT Reranking) — [YÊU CẦU CHẠY ĐỒNG THỜI 2 MÔ HÌNH]
+- **Luồng xử lý:** Khi thực hiện suy luận, hệ thống phải kích hoạt song song/đồng thời cả mô hình GNN và mô hình MLP Pruning:
+  - **Mô hình GNN** chạy lan truyền tin trên PPR subgraph đầy đủ để tính toán điểm lập luận $Score_{GNN}$.
+  - **Mô hình MLP Pruning** chạy trên tập thực thể ứng viên để tính toán điểm ngữ nghĩa $Score_{MLP}$.
+  - Điểm số cuối cùng được tổng hợp tuyến tính ở bước xếp hạng cuối: $Score = (1 - \alpha) \times Score_{GNN} + \alpha \times Score_{MLP}$.
+- **Hệ quả:** Latency suy luận tăng nhẹ (~233 ms so với 157 ms của baseline) do GPU phải thực thi forward pass cho cả 2 mô hình cùng lúc, nhưng bù lại đạt độ chính xác cao nhất vượt qua cả paper gốc.
+
+##### 2. Joint GNN + MLP (Hoặc Hybrid Joint) — [XỬ LÝ TUẦN TỰ LÀM BỘ LỌC TIỀN XỬ LÝ]
+- **Luồng xử lý:** Mô hình MLP Pruning đóng vai trò là một **Pre-filter (Bộ lọc chạy trước)** độc lập:
+  - MLP Pruning được kích hoạt trước để lọc và thu gọn subgraph (ví dụ từ 200 nodes xuống còn 100 nodes).
+  - GNN được kích hoạt sau đó để suy luận **chỉ trên subgraph 100 nodes** đã được lọc. Lúc này GNN hoàn toàn độc lập với MLP.
+- **Hệ quả:** Tiết kiệm tài nguyên xử lý cho GNN, nhưng nếu bộ lọc MLP chạy lỗi hoặc quá tay sẽ chặt đứt các node trung gian và gây ra lỗi mất liên kết cấu trúc (*Connectivity Starvation*).
+
+##### 3. PPR Baseline — [CHỈ CHẠY 1 MÔ HÌNH GNN]
+- **Luồng xử lý:** Chỉ kích hoạt mô hình GNN. Thuật toán PPR heuristic là tĩnh, tính toán trên CPU và đã được cache sẵn nên không phải là mô hình học máy cần kích hoạt lúc inference.
+
 ### C. Kết Quả Sweep Alpha (WN18RR, Seed 42, Checkpoint topk_0.1_layer_8_ValMRR_0.564)
 
 | alpha | Valid MRR | **Test MRR** | Test H@1 | Test H@10 | Eval Time |
