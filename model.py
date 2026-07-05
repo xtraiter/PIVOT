@@ -142,7 +142,7 @@ class GNN_auto(torch.nn.Module):
             scores = torch.sum(hidden * hidden[query_sub_idxs][batch_idxs], dim=-1)
         
         # re-indexing
-        scores_all = torch.zeros((n, self.loader.n_ent)).cuda()
-        scores_all[batch_idxs, abs_idxs] = scores
+        scores_all = torch.zeros((n, self.loader.n_ent), dtype=torch.float32, device=scores.device)
+        scores_all[batch_idxs, abs_idxs] = scores.to(dtype=torch.float32)
 
         return scores_all
