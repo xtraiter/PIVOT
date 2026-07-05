@@ -190,6 +190,17 @@ Dưới đây là kết quả thực nghiệm chi tiết (tính trung bình trê
 
 Bộ điều phối [pareto_optimizer.py](file:///home/vanba/KLTN/one-shot-subgraph/pareto_optimizer.py) quản lý và trích xuất tập hợp các cấu hình tối ưu Pareto (non-dominated configurations) từ không gian tham số search-grid gồm 120 cấu hình khác nhau (kết hợp các mốc alpha, beta, layer GNN L, và budget subgraph $\theta$).
 
+> **📌 Ghi chú Checkpoints sử dụng cho thực nghiệm Tuần 7–8:**
+> Để đảm bảo tính nhất quán trên từng seed, thực nghiệm tìm kiếm Pareto Frontier được chạy riêng biệt trên các bộ checkpoint tương ứng:
+> - **Mô hình GNN (Inference):** 
+>   - Seed 42: `data/WN18RR/saveModel/topk_0.1_layer_8_ValMRR_0.564_seed42.pt`
+>   - Seed 123: `data/WN18RR/saveModel/topk_0.1_layer_8_ValMRR_0.565_seed123.pt`
+>   - Seed 1234: `data/WN18RR/saveModel/topk_0.1_layer_8_ValMRR_0.565_seed1234.pt`
+> - **Mô hình MLP Pruning:**
+>   - Seed 42: `data/WN18RR/budget_results/pruning_mlp_v2_best_seed_42.pt`
+>   - Seed 123: `data/WN18RR/budget_results/pruning_mlp_v2_best_seed_123.pt`
+>   - Seed 1234: `data/WN18RR/budget_results/pruning_mlp_v2_best_seed_1234.pt`
+
 #### 📊 5 Điểm Tối Ưu Pareto Frontier Trích Xuất từ Thực Tế (Tệp `budget_results/pareto_cache_WN18RR.json`):
 
 | Điểm Pareto | Test MRR | Latency / Query | Cấu hình tham số tối ưu (alpha, beta, layer L, budget θ) | Ý nghĩa vận hành |
