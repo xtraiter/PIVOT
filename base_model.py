@@ -152,6 +152,9 @@ class BaseModel(object):
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
 
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
             # cover tail entity or not
             reach_tails = (pos_scores == 0).detach().int().reshape(-1).cpu().tolist()
             reach_tails_list += reach_tails
