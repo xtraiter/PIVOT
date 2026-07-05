@@ -154,6 +154,7 @@ class BaseModel(object):
 
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
+            time.sleep(0.05)
 
             # cover tail entity or not
             reach_tails = (pos_scores == 0).detach().int().reshape(-1).cpu().tolist()
