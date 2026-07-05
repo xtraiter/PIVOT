@@ -128,18 +128,29 @@ class BaseModel(object):
             
             # forward with autocast
             self.model.zero_grad()
-            with torch.amp.autocast('cuda'):
+            if hasattr(self.args, 'no_amp') and self.args.no_amp:
                 scores = self.model(subs, rels, subgraph_data)
                 
                 # loss calculation
                 pos_scores = scores[torch.arange(len(scores)).cuda(), objs.flatten()]
                 max_n = torch.max(scores, 1, keepdim=True)[0]
-                loss = torch.sum(- pos_scores + max_n + torch.log(torch.sum(torch.exp(scores - max_n),1))) 
-
-            # loss backward with scaler
-            self.scaler.scale(loss).backward()
-            self.scaler.step(self.optimizer)
-            self.scaler.update()
+                loss = torch.sum(- pos_scores + max_n + torch.log(torch.sum(torch.exp(scores - max_n),1)))
+                
+                loss.backward()
+                self.optimizer.step()
+            else:
+                with torch.amp.autocast('cuda'):
+                    scores = self.model(subs, rels, subgraph_data)
+                    
+                    # loss calculation
+                    pos_scores = scores[torch.arange(len(scores)).cuda(), objs.flatten()]
+                    max_n = torch.max(scores, 1, keepdim=True)[0]
+                    loss = torch.sum(- pos_scores + max_n + torch.log(torch.sum(torch.exp(scores - max_n),1))) 
+                
+                # loss backward with scaler
+                self.scaler.scale(loss).backward()
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
 
             # cover tail entity or not
             reach_tails = (pos_scores == 0).detach().int().reshape(-1).cpu().tolist()
@@ -193,8 +204,11 @@ class BaseModel(object):
                 if torch.cuda.is_available():
                     torch.cuda.synchronize()
                 fwd_t0 = time.perf_counter()
-                with torch.amp.autocast('cuda'):
+                if hasattr(self.args, 'no_amp') and self.args.no_amp:
                     scores = self.model(subs, rels, subgraph_data, mode='valid').float().data.cpu().numpy()
+                else:
+                    with torch.amp.autocast('cuda'):
+                        scores = self.model(subs, rels, subgraph_data, mode='valid').float().data.cpu().numpy()
                 scores = self._post_hoc_rerank(scores, subs, rels, subgraph_data)
                 if torch.cuda.is_available():
                     torch.cuda.synchronize()
@@ -260,8 +274,11 @@ class BaseModel(object):
                 if torch.cuda.is_available():
                     torch.cuda.synchronize()
                 fwd_t0 = time.perf_counter()
-                with torch.amp.autocast('cuda'):
+                if hasattr(self.args, 'no_amp') and self.args.no_amp:
                     scores = self.model(subs, rels, subgraph_data, mode='test').float().data.cpu().numpy()
+                else:
+                    with torch.amp.autocast('cuda'):
+                        scores = self.model(subs, rels, subgraph_data, mode='test').float().data.cpu().numpy()
                 scores = self._post_hoc_rerank(scores, subs, rels, subgraph_data)
                 if torch.cuda.is_available():
                     torch.cuda.synchronize()

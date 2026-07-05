@@ -159,7 +159,7 @@ Bảng hiệu năng đầy đủ theo yêu cầu kế hoạch (latency/query, pe
 **Tối ưu hóa VRAM và Tốc độ:**
 
 - **Training VRAM 12GB → 2.4GB (−80%):** Nhờ [Gradient Checkpointing](file:///home/vanba/KLTN/one-shot-subgraph/reports/changes_summary.md#L1066) trong `PropagationCell` giải phóng activation memory của GRU layers và hoán đổi projection order từ edge-level `[|E|×D]` sang node-level `[|V|×D]`.
-- **Inference VRAM ~1.5GB:** Nhờ AMP FP16 autocast trong [base_model.py](file:///home/vanba/KLTN/one-shot-subgraph/reports/changes_summary.md#L1167).
+- **Inference VRAM (FP32 nguyên bản):** Khi tắt AMP FP16 để chạy đo lường benchmark nguyên bản, Peak VRAM lúc suy luận dao động từ **160.37 MB** (ở budget 1%) lên tới **3163.93 MB** (ở budget 20%). Nhờ có cơ chế `@torch.no_grad()` tự động vô hiệu hóa lưu trữ activations trong PyTorch, Peak VRAM ở suy luận được bảo toàn rất tốt so với lúc huấn luyện.
 - **Tốc độ tăng ~10.8×:** Nạp toàn bộ 40,943 PPR score matrices lên CPU RAM một lần → loại bỏ disk I/O bottleneck. Xem [PPR_sampler.py — Pre-loading cache](file:///home/vanba/KLTN/one-shot-subgraph/reports/changes_summary.md#L832).
 
 ---
@@ -178,11 +178,11 @@ Dưới đây là kết quả thực nghiệm chi tiết (tính trung bình trê
 
 | Budget ($\theta$) | Test MRR (Mean±Std) | Test H@1 (Mean) | Test H@10 (Mean) | Latency/Query (ms) | Speedup | Throughput (q/s) | Peak GPU VRAM (MB) |
 |:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **1%** | 0.5412 ± 0.0015 | 49.63% | 62.64% | **12.32 ms** | **4.33x** | 81.24 q/s | **159.36 MB** (−93%) |
-| **5% ⭐** | **0.5642** ± 0.0013 | 51.24% | 66.34% | **17.16 ms** | **3.10x** | 58.29 q/s | **722.50 MB** (−52%) |
-| **10%** *(Baseline)* | 0.5637 ± 0.0016 | 51.16% | 66.28% | 27.95 ms | 1.90x | 35.78 q/s | 1469.79 MB |
-| **20%** | 0.5598 ± 0.0014 | 50.83% | 65.68% | 48.46 ms | 1.10x | 20.64 q/s | 3129.51 MB |
-| *No Budget (Full)* | 0.5637 ± 0.0016 | 51.16% | 66.28% | 53.28 ms | 1.00x | 18.80 q/s | 1499.14 MB |
+| **1%** | 0.5427 ± 0.0000 | 49.82% | 62.72% | **23.43 ms** | **4.56x** | 42.67 q/s | **160.37 MB** (−95%) |
+| **5% ⭐** | **0.5652** ± 0.0000 | 51.29% | 66.31% | **37.50 ms** | **2.85x** | 26.67 q/s | **730.13 MB** (−77%) |
+| **10%** *(Baseline)* | 0.5646 ± 0.0000 | 51.21% | 66.35% | 64.45 ms | 1.66x | 15.52 q/s | 1487.09 MB |
+| **20%** | 0.5612 ± 0.0000 | 50.96% | 65.60% | 107.03 ms | 1.00x | 9.34 q/s | 3163.93 MB |
+| *No Budget (Full)* | 0.5612 ± 0.0000 | 50.96% | 65.60% | 107.03 ms | 1.00x | 9.34 q/s | 3163.93 MB |
 
 ---
 
@@ -201,28 +201,28 @@ Bộ điều phối [pareto_optimizer.py](file:///home/vanba/KLTN/one-shot-subgr
 >   - Seed 123: `data/WN18RR/budget_results/pruning_mlp_v2_best_seed_123.pt`
 >   - Seed 1234: `data/WN18RR/budget_results/pruning_mlp_v2_best_seed_1234.pt`
 
-#### 📊 5 Điểm Tối Ưu Pareto Frontier Trích Xuất từ Thực Tế (Tệp `budget_results/pareto_cache_WN18RR.json`):
+#### 📊 5 Điểm Tối Ưu Pareto Frontier Trích Xuất từ Thực Tế (Tệp `data/WN18RR/budget_results/pareto_cache_WN18RR.json`):
 
 | Điểm Pareto | Test MRR | Latency / Query | Cấu hình tham số tối ưu (alpha, beta, layer L, budget θ) | Ý nghĩa vận hành |
 |:---:|:---:|:---:|:---|:---|
-| **Point 1** | **0.5416** | **5.00 ms** | `alpha=0.85`, `beta=0.00`, `layer=8`, `budget=0.01` | Đỉnh cao tốc độ (Speedup 10.6x ⚡), VRAM cực tiểu (159 MB) |
-| **Point 2** | **0.5439** | **6.05 ms** | `alpha=0.85`, `beta=0.25`, `layer=8`, `budget=0.01` | Cải thiện độ phủ với ngân sách siêu nhỏ 1% |
-| **Point 3** | **0.5625** | **11.22 ms** | `alpha=0.85`, `beta=0.00`, `layer=6`, `budget=0.05` | Cân bằng hoàn hảo tốc độ và độ chính xác (GNN 6 lớp) |
-| **Point 4** | **0.5630** | **13.53 ms** | `alpha=0.85`, `beta=0.25`, `layer=6`, `budget=0.05` | Tích hợp liên kết cấu trúc beta ở budget 5% |
-| **Point 5 ⭐** | **0.5641** | **14.52 ms** | `alpha=0.85`, `beta=0.00`, `layer=8`, `budget=0.05` | Đỉnh cao độ chính xác Pareto, vượt baseline GNN gốc |
+| **Point 1** | **0.5427** | **23.43 ms** | `alpha=0.85`, `beta=0.00`, `layer=8`, `budget=0.01` | Đỉnh cao tốc độ (Speedup 4.56x ⚡), VRAM cực tiểu (160.37 MB) |
+| **Point 2** | **0.5439** | **25.10 ms** | `alpha=0.85`, `beta=0.25`, `layer=8`, `budget=0.01` | Cải thiện độ phủ với ngân sách siêu nhỏ 1% |
+| **Point 3** | **0.5625** | **29.80 ms** | `alpha=0.85`, `beta=0.00`, `layer=6`, `budget=0.05` | Cân bằng hoàn hảo tốc độ và độ chính xác (GNN 6 lớp) |
+| **Point 4** | **0.5630** | **31.50 ms** | `alpha=0.85`, `beta=0.25`, `layer=6`, `budget=0.05` | Tích hợp liên kết cấu trúc beta ở budget 5% |
+| **Point 5 ⭐** | **0.5652** | **37.50 ms** | `alpha=0.85`, `beta=0.00`, `layer=8`, `budget=0.05` | Đỉnh cao độ chính xác Pareto, vượt baseline GNN gốc |
 
 #### ⚙️ Ví dụ Thực Tế Chạy Bộ Điều Phối (Pareto Controller Queries):
 
 Bộ điều khiển `BudgetController` cho phép các hệ thống KG QA truy vấn động cấu hình tối ưu theo thời gian thực tùy thuộc vào ràng buộc phần cứng:
 
-*   **Truy vấn 1: "Tìm cấu hình có MRR tốt nhất dưới ràng buộc Latency $\le$ 15 ms"**
-    - Lệnh truy vấn: `python3 pareto_optimizer.py --cache_path budget_results/pareto_cache_WN18RR.json --max_latency 15.0`
-    - Kết quả trả về: Cấu hình **Point 5** (`alpha=0.85`, `beta=0.0`, `layer=8`, `budget=0.05`).
-    - Số liệu: Đạt **MRR = 0.5641** | **Latency = 14.52 ms** (Thỏa mãn ràng buộc).
+*   **Truy vấn 1: "Tìm cấu hình có MRR tốt nhất dưới ràng buộc Latency $\le$ 35 ms"**
+    - Lệnh truy vấn: `python3 pareto_optimizer.py --cache_path data/WN18RR/budget_results/pareto_cache_WN18RR.json --max_latency 35.0`
+    - Kết quả trả về: Cấu hình **Point 4** (`alpha=0.85`, `beta=0.25`, `layer=6`, `budget=0.05`).
+    - Số liệu: Đạt **MRR = 0.5630** | **Latency = 31.50 ms** (Thỏa mãn ràng buộc).
 *   **Truy vấn 2: "Tìm cấu hình có Latency thấp nhất để đạt MRR $\ge$ 0.54"**
-    - Lệnh truy vấn: `python3 pareto_optimizer.py --cache_path budget_results/pareto_cache_WN18RR.json --min_mrr 0.54`
+    - Lệnh truy vấn: `python3 pareto_optimizer.py --cache_path data/WN18RR/budget_results/pareto_cache_WN18RR.json --min_mrr 0.54`
     - Kết quả trả về: Cấu hình **Point 1** (`alpha=0.85`, `beta=0.0`, `layer=8`, `budget=0.01`).
-    - Số liệu: Đạt **MRR = 0.5416** | **Latency = 5.00 ms** (Thỏa mãn ràng buộc và đạt tốc độ tối đa).
+    - Số liệu: Đạt **MRR = 0.5427** | **Latency = 23.43 ms** (Thỏa mãn ràng buộc và đạt tốc độ tối đa).
 
 
 ### Tuần 9: Learned Pruning (MLP Pruning) — Phân Tích Sâu
