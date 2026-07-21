@@ -11,7 +11,7 @@
 # Resume-safe: gian doan thi chay lai cung lenh, skip log da co [TEST].
 # ============================================================
 set -e
-PY=/home/vanba/miniconda3/envs/pivot/bin/python3
+PY=${PY:-python3}
 MODE=${1:-run}
 OUT=robustness_t10
 mkdir -p $OUT

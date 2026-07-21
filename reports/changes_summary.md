@@ -6,7 +6,7 @@ Bản báo cáo này đối chiếu chi tiết từng tệp tin, biến số và
 > **HƯỚNG DẪN CẬP NHẬT KHI CHUYỂN CHAT (CHAT TRANSFER INSTRUCTIONS):**
 > 1. Khi mở cửa sổ chat mới, hãy dán câu lệnh sau vào ô chat đầu tiên để AI nhận diện dự án lập tức:
 >    `Hãy đọc tệp changes_summary.md và quy tắc trong .agents/AGENTS.md để nắm bắt toàn bộ các chỉnh sửa so với repo gốc. Mỗi khi thực hiện tối ưu hóa hoặc thêm tính năng mới, hãy cập nhật lại changes_summary.md bằng cách ghi đè hoặc bổ sung phần code thay đổi (diff) tương ứng.`
-> 2. Quy tắc tự động đã được cấu hình tại [AGENTS.md](file:///home/vanba/KLTN/one-shot-subgraph/.agents/AGENTS.md). Bất kỳ tác nhân AI nào khi tải workspace này đều sẽ tự động phát hiện quy tắc đó và duy trì cấu trúc tài liệu này.
+> 2. Quy tắc tự động đã được cấu hình tại [AGENTS.md](../.agents/AGENTS.md). Bất kỳ tác nhân AI nào khi tải workspace này đều sẽ tự động phát hiện quy tắc đó và duy trì cấu trúc tài liệu này.
 
 ---
 

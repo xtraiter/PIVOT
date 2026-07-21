@@ -8,16 +8,12 @@ __pycache__/
 Thumbs.db
 .ipynb_checkpoints/
 
-# PPR Scores cache (Dung lượng cực lớn, >19GB cho WN18RR, >180GB cho YAGO)
-# Đã được tối ưu hóa để chạy song song cực nhanh (1-2 phút) trên Vast.ai nên không cần đẩy lên GitHub.
+# PPR score cache — qua lon de dua len repo (>19GB WN18RR); tu dong tai tao khi chay lan dau
 **/ppr_scores/
 
-# Cho phép đẩy kết quả logs và checkpoints lên GitHub
-# Checkpoint mô hình này rất nhẹ (~4MB) nên đẩy lên GitHub hoàn toàn khả thi và nhanh chóng.
-!results/
-!**/saveModel/
-*.npz
-
-# Ignore large cache arrays and tensors
+# Mang diem dump (.npz) va tensor cache lon
 *.npz
 reports/artifacts/**/budget_results/*.pt
+
+# Ghi chu: checkpoint GNN per-seed (~12MB/file) va log thi nghiem trong reports/
+# duoc commit CO CHU DICH lam minh chung tai lap cho khoa luan.
