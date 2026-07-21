@@ -3385,11 +3385,13 @@ Báo cáo phải trả lời đủ:
 
 ```
 
-### Bản vá 	rain_auto.py (Phase 0.3)
+### Bản vá `train_auto.py` (Phase 0.3)
 Sửa lỗi nhận diện tham số cho các tập dữ liệu nhiễu WN18RR_del*.
 
-`diff
--    if dataset == \'WN18RR\':
-+    if dataset.startswith(\'WN18RR\'):
-`
-- **walkthrough_ablation_draft.md**: Viết lại hoàn toàn dựa trên insight mới về sự phân rã Tầng 1 (Ngữ nghĩa gánh Candidate Selection) và Tầng 2 (Cấu trúc gánh Rerank MRR). Phán quyết rel_match có thể loại bỏ. Cập nhật các limitation và errata.
+```diff
+-    if dataset == 'WN18RR':
++    if dataset.startswith('WN18RR'):
+```
+
+- **walkthrough_ablation_draft.md**: Viết lại hoàn toàn dựa trên insight mới về sự phân rã Tầng 1 (Ngữ nghĩa gánh Candidate Selection) và Tầng 2 (Cấu trúc gánh Rerank MRR). Phán quyết `rel_match` có thể loại bỏ. Cập nhật các hạn chế và errata.
+
