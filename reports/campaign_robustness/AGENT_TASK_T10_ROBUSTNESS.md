@@ -82,7 +82,7 @@ python3 make_perturbed_datasets_v2.py --data_path ./data/WN18RR --seed 42 \
 ```
 
 Kiểm tra sau khi chạy:
-1. File `data/WN18RR_perturbation_summary_v2.txt` có số `deleted` khớp tỷ lệ danh nghĩa (±1 triple)
+1. File `reports/campaign_robustness/WN18RR_perturbation_summary.txt` có số `deleted` khớp tỷ lệ danh nghĩa (±1 triple)
 2. `diff data/WN18RR/test.txt data/WN18RR_del10/test.txt` → **rỗng**
 3. `ls data/WN18RR_del10/ppr_scores/ 2>/dev/null` → **không tồn tại**
 
@@ -135,7 +135,7 @@ PPR của config đó đã có; lượt đầu mỗi config gánh PPR precompute
 
 Resume-safe: gián đoạn thì chạy lại đúng lệnh, script skip log đã có `[TEST]`.
 
-Đếm log khi xong: `ls robustness_t10/rob_*.log | wc -l` → cần = `N_config × 6`.
+Đếm log khi xong: `ls campaign_robustness/robustness_t10/rob_*.log | wc -l` → cần = `N_config × 6`.
 
 ---
 
@@ -167,14 +167,14 @@ python3 build_robustness.py --dir robustness_t10 --clean_dir grid_t78_wn18rr
   1. *Filtered-ranking dùng filter của dataset nhiễu* (triple bị xóa không còn bị filter) — cả hai phương pháp chịu cùng protocol nên so sánh công bằng, cùng cách làm với Table 16 paper gốc.
   2. *Feature MLP tính trên đồ thị nhiễu* (đúng thiết kế test-time robustness).
   3. *Nếu chỉ chạy 2 config:* ghi rõ lý do dung lượng đĩa.
-- **Bảng degradation** + **bảng khoảng cách Rerank−PPR** copy từ `robustness_t10/robustness_report_wn18rr.md`.
-- **Nhúng** `robustness_t10/figure_robustness_wn18rr.png`.
+- **Bảng degradation** + **bảng khoảng cách Rerank−PPR** copy từ `campaign_robustness/robustness_t10/robustness_report_wn18rr.md`.
+- **Nhúng** `campaign_robustness/robustness_t10/figure_robustness_wn18rr.png`.
 - **Đoạn nhận xét 5–8 câu** CHỈ dựa trên `robustness_agg.csv` — nêu rõ kịch bản (a)/(b)/(c) và số liệu ô `reldel`.
 
 ### 4.2 §0 và §3 walkthrough
 
 - **§0 bảng trạng thái:** Tuần 10 ⬜ → ✅
-- **§3:** thêm dòng `robustness_t10/` (N log + agg csv + figure) và `data/WN18RR_perturbation_summary_v2.txt`
+- **§3:** thêm dòng `campaign_robustness/robustness_t10/` (N log + agg csv + figure) và `reports/campaign_robustness/WN18RR_perturbation_summary.txt`
 
 ### 4.3 changes_summary.md — mục Tuần 10
 

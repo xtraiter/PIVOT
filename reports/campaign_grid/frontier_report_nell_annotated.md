@@ -16,9 +16,9 @@
 | Phương pháp | PPR-only (`ppr`), PIVOT-Rerank (`rerank`) — Hybrid: tùy chọn, chưa chạy |
 | Budget θ | 1%, 5%, 10%, 20% |
 | Tổng số lượt chạy | 48 (2 method × 4 budget × 3 seed × 2 split valid/test) |
-| Log directory | `grid_t78_nell/` |
-| Cache | `grid_t78_nell/pareto_cache_nell_v2.json` |
-| Figure | `grid_t78_nell/figure1_frontier_nell.png` |
+| Log directory | `campaign_grid/grid_t78_nell/` |
+| Cache | `campaign_grid/grid_t78_nell/pareto_cache_nell_v2.json` |
+| Figure | `campaign_grid/grid_t78_nell/figure1_frontier_nell.png` |
 
 > ⚠️ **Ghi chú VRAM và latency:** Do batchsize=8 (thay vì bs=16 của Tuần 6), cột VRAM và latency trong bảng này nhỏ hơn ~2× so với `reports/artifacts/nell/budget_results/seed_*/summary.csv`. Số chuẩn hoá trong file này (bs=8) là tham chiếu chính thức của KLTN.
 
@@ -76,7 +76,7 @@ Controller chọn theo **Valid MRR**, báo cáo **Test MRR** để đánh giá k
 ### Truy vấn 1: Latency ≤ 30 ms → Best Valid MRR
 
 ```
-python3 pareto_optimizer.py --cache_path grid_t78_nell/pareto_cache_nell_v2.json --max_latency 30.0
+python3 pareto_optimizer.py --cache_path campaign_grid/grid_t78_nell/pareto_cache_nell_v2.json --max_latency 30.0
 ```
 
 **Kết quả:** PIVOT-Rerank @ θ=5%
@@ -86,7 +86,7 @@ python3 pareto_optimizer.py --cache_path grid_t78_nell/pareto_cache_nell_v2.json
 ### Truy vấn 2: Min Valid MRR ≥ 0.568 → Min Latency
 
 ```
-python3 pareto_optimizer.py --cache_path grid_t78_nell/pareto_cache_nell_v2.json --min_mrr 0.568
+python3 pareto_optimizer.py --cache_path campaign_grid/grid_t78_nell/pareto_cache_nell_v2.json --min_mrr 0.568
 ```
 
 **Kết quả:** PIVOT-Rerank @ θ=10%

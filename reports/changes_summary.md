@@ -2653,12 +2653,12 @@ un_grid_t78.sh | Bash script điều phối 72 lượt WN18RR + 48 lượt NELL-
 | pareto_optimizer.py | BudgetController: parse cache JSON v2, lọc frontier theo ràng buộc (--max_latency, --min_mrr), trả về cấu hình tối ưu Pareto. |
 
 **Artifacts mới:**
-- grid_t78_wn18rr/ — 72 log FP32 (6 method × 4 budget × 3 seed × 1 dataset)
-- grid_t78_nell/ — 48 log FP32 (4 method × 4 budget × 3 seed × 1 dataset; không có hybrid)
-- grid_t78_wn18rr/pareto_cache_wn18rr_v2.json — cache tổng hợp WN18RR
-- grid_t78_nell/pareto_cache_nell_v2.json — cache tổng hợp NELL-995
-- grid_t78_wn18rr/figure1_frontier_wn18rr.png — Figure 1 KLTN (WN18RR)
-- grid_t78_nell/figure1_frontier_nell.png — Figure 1 KLTN (NELL-995)
+- campaign_grid/grid_t78_wn18rr/ — 72 log FP32 (6 method × 4 budget × 3 seed × 1 dataset)
+- campaign_grid/grid_t78_nell/ — 48 log FP32 (4 method × 4 budget × 3 seed × 1 dataset; không có hybrid)
+- campaign_grid/grid_t78_wn18rr/pareto_cache_wn18rr_v2.json — cache tổng hợp WN18RR
+- campaign_grid/grid_t78_nell/pareto_cache_nell_v2.json — cache tổng hợp NELL-995
+- campaign_grid/grid_t78_wn18rr/figure1_frontier_wn18rr.png — Figure 1 KLTN (WN18RR)
+- campaign_grid/grid_t78_nell/figure1_frontier_nell.png — Figure 1 KLTN (NELL-995)
 - reports/artifacts/WN18RR/budget_results/pareto_cache_WN18RR_deprecated.json — cache v1 cũ (không còn hiệu lực, giữ lại cho provenance)
 
 ### Bản vá `build_pareto.py` — Định dạng số f-string (2026-07-18)
@@ -2969,7 +2969,7 @@ echo "Tiep: python3 build_robustness.py --dir $OUT --clean_dir grid_t78_wn18rr"
 """
 build_robustness.py — Tuan 10
 =============================
-Tong hop log robustness_t10/ + tai dung diem CLEAN tu grid_t78_wn18rr
+Tong hop log campaign_robustness/robustness_t10/ + tai dung diem CLEAN tu grid_t78_wn18rr
 (ppr_s{S}_tk0.1_test.log, rerank_s{S}_tk0.1_test.log — cung dieu kien do).
 Xuat: bang degradation (mean+/-std, ddof=1), retention %, figure 2 panel,
 bao cao markdown de dan vao muc Tuan 10 cua walkthrough.
@@ -3022,7 +3022,7 @@ def main():
                 rows.append({"config": "clean", "method": m.group(1),
                              "seed": int(m.group(2)), "mrr": v, "log": p})
 
-    # Load diem NHIEU tu robustness_t10/
+    # Load diem NHIEU tu campaign_robustness/robustness_t10/
     for p in glob.glob(os.path.join(args.dir, "rob_*.log")):
         m = RE_ROB.search(os.path.basename(p))
         if m:
@@ -3269,7 +3269,7 @@ python3 make_perturbed_datasets_v2.py --data_path ./data/WN18RR --seed 42 \
 ```
 
 Kiểm tra sau khi chạy:
-1. File `data/WN18RR_perturbation_summary_v2.txt` có số `deleted` khớp tỷ lệ danh nghĩa (±1 triple)
+1. File `reports/campaign_robustness/WN18RR_perturbation_summary.txt` có số `deleted` khớp tỷ lệ danh nghĩa (±1 triple)
 2. `diff data/WN18RR/test.txt data/WN18RR_del10/test.txt` → **rỗng**
 3. `ls data/WN18RR_del10/ppr_scores/ 2>/dev/null` → **không tồn tại**
 
@@ -3322,7 +3322,7 @@ PPR của config đó đã có; lượt đầu mỗi config gánh PPR precompute
 
 Resume-safe: gián đoạn thì chạy lại đúng lệnh, script skip log đã có `[TEST]`.
 
-Đếm log khi xong: `ls robustness_t10/rob_*.log | wc -l` → cần = `N_config × 6`.
+Đếm log khi xong: `ls campaign_robustness/robustness_t10/rob_*.log | wc -l` → cần = `N_config × 6`.
 
 ---
 
@@ -3354,14 +3354,14 @@ python3 build_robustness.py --dir robustness_t10 --clean_dir grid_t78_wn18rr
   1. *Filtered-ranking dùng filter của dataset nhiễu* (triple bị xóa không còn bị filter) — cả hai phương pháp chịu cùng protocol nên so sánh công bằng, cùng cách làm với Table 16 paper gốc.
   2. *Feature MLP tính trên đồ thị nhiễu* (đúng thiết kế test-time robustness).
   3. *Nếu chỉ chạy 2 config:* ghi rõ lý do dung lượng đĩa.
-- **Bảng degradation** + **bảng khoảng cách Rerank−PPR** copy từ `robustness_t10/robustness_report_wn18rr.md`.
-- **Nhúng** `robustness_t10/figure_robustness_wn18rr.png`.
+- **Bảng degradation** + **bảng khoảng cách Rerank−PPR** copy từ `campaign_robustness/robustness_t10/robustness_report_wn18rr.md`.
+- **Nhúng** `campaign_robustness/robustness_t10/figure_robustness_wn18rr.png`.
 - **Đoạn nhận xét 5–8 câu** CHỈ dựa trên `robustness_agg.csv` — nêu rõ kịch bản (a)/(b)/(c) và số liệu ô `reldel`.
 
 ### 4.2 §0 và §3 walkthrough
 
 - **§0 bảng trạng thái:** Tuần 10 ⬜ → ✅
-- **§3:** thêm dòng `robustness_t10/` (N log + agg csv + figure) và `data/WN18RR_perturbation_summary_v2.txt`
+- **§3:** thêm dòng `campaign_robustness/robustness_t10/` (N log + agg csv + figure) và `reports/campaign_robustness/WN18RR_perturbation_summary.txt`
 
 ### 4.3 changes_summary.md — mục Tuần 10
 

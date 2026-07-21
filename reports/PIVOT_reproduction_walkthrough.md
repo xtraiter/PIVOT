@@ -26,12 +26,12 @@
 | **Tuần 2–3** | GNN Checkpoints | Các bộ trọng số GNN tốt nhất (Best Val MRR) | - Seed 42: `reports/artifacts/WN18RR/saveModel/topk_0.1_layer_8_ValMRR_0.564_seed42.pt`<br>- Seed 123: `reports/artifacts/WN18RR/saveModel/topk_0.1_layer_8_ValMRR_0.565_seed123.pt`<br>- Seed 1234: `reports/artifacts/WN18RR/saveModel/topk_0.1_layer_8_ValMRR_0.565_seed1234.pt` |
 | **Tuần 4–5** | Efficiency Profiling | Đo lường Latency, Throughput, Peak GPU VRAM và GPU-hours | Xem phần thống kê hiệu năng tích hợp trực tiếp trong các tệp log Tuần 2-3 ở trên. |
 | **Tuần 6** | Budgeted Protocol | Đánh giá suy luận giới hạn ngân sách (1%, 5%, 10%, 20%) | - Seed 42: `reports/artifacts/WN18RR/budget_results/seed_42/summary.csv`<br>- Seed 123: `reports/artifacts/WN18RR/budget_results/seed_123/summary.csv`<br>- Seed 1234: `reports/artifacts/WN18RR/budget_results/seed_1234/summary.csv`<br>- Aggregated: `reports/artifacts/WN18RR/budget_results/pivot_aggregated_summary.csv` |
-| **Tuần 7–8** | Pareto Optimizer | Trích xuất Pareto Frontier (MRR vs Latency vs VRAM) | - Logs WN18RR: `grid_t78_wn18rr/` (72 log)<br>- Logs NELL-995: `grid_t78_nell/` (48 log)<br>- Cache WN18RR: `grid_t78_wn18rr/pareto_cache_wn18rr_v2.json`<br>- Cache NELL: `grid_t78_nell/pareto_cache_nell_v2.json`<br>- Figure WN18RR: `grid_t78_wn18rr/figure1_frontier_wn18rr.png`<br>- Figure NELL: `grid_t78_nell/figure1_frontier_nell.png`<br>- Report WN18RR: `grid_t78_wn18rr/frontier_report_wn18rr_annotated.md`<br>- Report NELL: `grid_t78_nell/frontier_report_nell_annotated.md` |
+| **Tuần 7–8** | Pareto Optimizer | Trích xuất Pareto Frontier (MRR vs Latency vs VRAM) | - Logs WN18RR: `campaign_grid/grid_t78_wn18rr/` (72 log)<br>- Logs NELL-995: `campaign_grid/grid_t78_nell/` (48 log)<br>- Cache WN18RR: `campaign_grid/grid_t78_wn18rr/pareto_cache_wn18rr_v2.json`<br>- Cache NELL: `campaign_grid/grid_t78_nell/pareto_cache_nell_v2.json`<br>- Figure WN18RR: `campaign_grid/grid_t78_wn18rr/figure1_frontier_wn18rr.png`<br>- Figure NELL: `campaign_grid/grid_t78_nell/figure1_frontier_nell.png`<br>- Report WN18RR: `campaign_grid/grid_t78_wn18rr/frontier_report_wn18rr_annotated.md`<br>- Report NELL: `campaign_grid/grid_t78_nell/frontier_report_nell_annotated.md` |
 | **Tuần 9** | MLP Pruning Training | Log quá trình tối ưu MLP Classifier (Loss, Recall@100) | `reports/artifacts/WN18RR/budget_results/pruning_mlp_v2.log` |
 | **Tuần 9** | MLP Checkpoints | Bộ trọng số MLP tốt nhất đã được huấn luyện | - Seed 42: `reports/artifacts/WN18RR/budget_results/pruning_mlp_v2_best_seed_42.pt`<br>- Seed 123: `reports/artifacts/WN18RR/budget_results/pruning_mlp_v2_best_seed_123.pt`<br>- Seed 1234: `reports/artifacts/WN18RR/budget_results/pruning_mlp_v2_best_seed_1234.pt` |
 | **Tuần 9** | MLP Recall Aggregated | Thống kê so sánh Recall@K của MLP vs PPR (n=3) | `reports/artifacts/WN18RR/budget_results/pruning_mlp_aggregated_summary.csv` |
-| **Tuần 10** | Robustness Suite | Đánh giá độ bền vững dưới nhiễu (khuyết cạnh) | - N log: `robustness_t10/` (24 log)<br>- Agg csv: `robustness_t10/robustness_agg.csv`<br>- Figure: `robustness_t10/figure_robustness_wn18rr.png`<br>- Report: `robustness_t10/robustness_report_wn18rr.md`<br>- P. Summary: `data/WN18RR_perturbation_summary_v2.txt` |
-| **Tuần 10** | Robustness Suite | Đánh giá độ bền vững dưới nhiễu (khuyết cạnh) | - N log: `robustness_t10/` (24 log)<br>- Agg csv: `robustness_t10/robustness_agg.csv`<br>- Figure: `robustness_t10/figure_robustness_wn18rr.png`<br>- Report: `robustness_t10/robustness_report_wn18rr.md`<br>- P. Summary: `data/WN18RR_perturbation_summary_v2.txt` |
+| **Tuần 10** | Robustness Suite | Đánh giá độ bền vững dưới nhiễu (khuyết cạnh) | - N log: `campaign_robustness/robustness_t10/` (24 log)<br>- Agg csv: `campaign_robustness/robustness_t10/robustness_agg.csv`<br>- Figure: `campaign_robustness/robustness_t10/figure_robustness_wn18rr.png`<br>- Report: `campaign_robustness/robustness_t10/robustness_report_wn18rr.md`<br>- P. Summary: `reports/campaign_robustness/WN18RR_perturbation_summary.txt` |
+| **Tuần 10** | Robustness Suite | Đánh giá độ bền vững dưới nhiễu (khuyết cạnh) | - N log: `campaign_robustness/robustness_t10/` (24 log)<br>- Agg csv: `campaign_robustness/robustness_t10/robustness_agg.csv`<br>- Figure: `campaign_robustness/robustness_t10/figure_robustness_wn18rr.png`<br>- Report: `campaign_robustness/robustness_t10/robustness_report_wn18rr.md`<br>- P. Summary: `reports/campaign_robustness/WN18RR_perturbation_summary.txt` |
 
 ---
 
@@ -237,15 +237,15 @@ Dưới đây là kết quả thực nghiệm chi tiết (tính trung bình trê
 
 ##### 4. Nhúng biểu đồ Pareto WN18RR (Figure 1 KLTN)
 
-![Pareto Frontier WN18RR](grid_t78_wn18rr/figure1_frontier_wn18rr.png)
+![Pareto Frontier WN18RR](campaign_grid/grid_t78_wn18rr/figure1_frontier_wn18rr.png)
 
 ##### 5. Demo BudgetController trên WN18RR
 
 * **Truy vấn 1: "Tìm cấu hình MRR tốt nhất dưới ràng buộc Latency ≤ 12 ms"** *(ràng buộc cắt vào frontier)*
-  - Lệnh truy vấn: `python3 pareto_optimizer.py --cache_path grid_t78_wn18rr/pareto_cache_wn18rr_v2.json --max_latency 12.0`
+  - Lệnh truy vấn: `python3 pareto_optimizer.py --cache_path campaign_grid/grid_t78_wn18rr/pareto_cache_wn18rr_v2.json --max_latency 12.0`
   - Trả về: **PIVOT-Rerank @ θ=5%** → Valid MRR: `0.5681`, Test MRR: `0.5678 ± 0.0017`, Latency/q: `10.96 ms`, VRAM: `730 MB`.
 * **Truy vấn 2: "Tìm cấu hình Latency thấp nhất để đạt MRR ≥ 0.565"** *(ràng buộc cắt vào frontier)*
-  - Lệnh truy vấn: `python3 pareto_optimizer.py --cache_path grid_t78_wn18rr/pareto_cache_wn18rr_v2.json --min_mrr 0.565`
+  - Lệnh truy vấn: `python3 pareto_optimizer.py --cache_path campaign_grid/grid_t78_wn18rr/pareto_cache_wn18rr_v2.json --min_mrr 0.565`
   - Trả về: **Hybrid+Rerank @ θ=5%** → Valid MRR: `0.5661`, Test MRR: `0.5661 ± 0.0007`, Latency/q: `9.66 ms`, VRAM: `482 MB`.
 
 Hai truy vấn trả về hai điểm **khác nhau** trên frontier — minh họa đúng tinh thần BudgetController: ràng buộc latency chặt hơn chọn PIVOT-Rerank, ràng buộc accuracy chặt hơn chọn Hybrid+Rerank với VRAM tiết kiệm hơn đáng kể.
@@ -295,7 +295,7 @@ Phân tích Pareto trên WN18RR cho thấy sự vượt trội rõ rệt của c
 
 ##### 4. Nhúng biểu đồ Pareto NELL-995 (Figure 1 KLTN)
 
-![Pareto Frontier NELL-995](grid_t78_nell/figure1_frontier_nell.png)
+![Pareto Frontier NELL-995](campaign_grid/grid_t78_nell/figure1_frontier_nell.png)
 
 ##### 5. Demo BudgetController trên NELL-995
 

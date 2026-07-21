@@ -16,9 +16,9 @@
 | Phương pháp | PPR-only (`ppr`), PIVOT-Rerank (`rerank`), Hybrid+Rerank (`hybrid`) |
 | Budget θ | 1%, 5%, 10%, 20% |
 | Tổng số lượt chạy | 72 (3 method × 4 budget × 3 seed × 2 split valid/test) |
-| Log directory | `grid_t78_wn18rr/` |
-| Cache | `grid_t78_wn18rr/pareto_cache_wn18rr_v2.json` |
-| Figure | `grid_t78_wn18rr/figure1_frontier_wn18rr.png` |
+| Log directory | `campaign_grid/grid_t78_wn18rr/` |
+| Cache | `campaign_grid/grid_t78_wn18rr/pareto_cache_wn18rr_v2.json` |
+| Figure | `campaign_grid/grid_t78_wn18rr/figure1_frontier_wn18rr.png` |
 
 ---
 
@@ -82,7 +82,7 @@ Controller chọn theo **Valid MRR**, báo cáo **Test MRR** để đánh giá k
 ### Truy vấn 1: Latency ≤ 12 ms → Best Valid MRR
 
 ```
-python3 pareto_optimizer.py --cache_path grid_t78_wn18rr/pareto_cache_wn18rr_v2.json --max_latency 12.0
+python3 pareto_optimizer.py --cache_path campaign_grid/grid_t78_wn18rr/pareto_cache_wn18rr_v2.json --max_latency 12.0
 ```
 
 **Kết quả:** PIVOT-Rerank @ θ=5%
@@ -92,7 +92,7 @@ python3 pareto_optimizer.py --cache_path grid_t78_wn18rr/pareto_cache_wn18rr_v2.
 ### Truy vấn 2: Min Valid MRR ≥ 0.565 → Min Latency
 
 ```
-python3 pareto_optimizer.py --cache_path grid_t78_wn18rr/pareto_cache_wn18rr_v2.json --min_mrr 0.565
+python3 pareto_optimizer.py --cache_path campaign_grid/grid_t78_wn18rr/pareto_cache_wn18rr_v2.json --min_mrr 0.565
 ```
 
 **Kết quả:** Hybrid+Rerank @ θ=5%

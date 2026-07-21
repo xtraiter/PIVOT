@@ -20,7 +20,7 @@ Kèm theo: **Robustness Suite** (xóa cạnh ngẫu nhiên 5/10/20% + relation-s
 - Cải thiện **bền dưới nhiễu**: gap Rerank − PPR giữ ~+0.004 ở mọi mức xóa cạnh; cả ba chế độ suy giảm cùng tốc độ (retention 90.6 / 83.8 / 73.9 / 99.6%).
 - Ablation hai-dataset: nhóm đặc trưng **cấu trúc** tạo toàn bộ mức tăng MRR ở khâu rerank; nhóm **ngữ nghĩa** quyết định chất lượng candidate selection (Recall NELL sụp 0.604→0.265 khi thiếu) và hiện thực hóa chế độ Hybrid.
 
-Toàn bộ số liệu truy vết được về log trong repo: xem **[reports/PIVOT_reproduction_walkthrough.md](reports/PIVOT_reproduction_walkthrough.md)** (báo cáo đầy đủ Tuần 1–10 + ablation), CSV chốt tại `reports/csv_deliverables/`, log thô tại `reports/grid_t78_*/`, `reports/robustness_t10/`, `reports/artifacts/`.
+Toàn bộ số liệu truy vết được về log trong repo: xem **[reports/PIVOT_reproduction_walkthrough.md](reports/PIVOT_reproduction_walkthrough.md)** (báo cáo đầy đủ Tuần 1–10 + ablation), CSV chốt tại `reports/csv_deliverables/`, log thô tại `reports/grid_t78_*/`, `reports/campaign_robustness/robustness_t10/`, `reports/artifacts/`.
 
 ## Cấu trúc repo
 
@@ -77,8 +77,8 @@ Tier-2 (MRR): dump điểm bằng một lượt forward với `--dump_scores <fi
 **5) Grid Pareto + Controller:**
 ```bash
 bash run_grid_t78.sh wn18rr        # (INCLUDE_HYBRID=1 để thêm Hybrid)
-python3 build_pareto.py --dir reports/grid_t78_wn18rr
-python3 pareto_optimizer.py --cache_path reports/grid_t78_wn18rr/pareto_cache_wn18rr_v2.json --max_latency 12.0
+python3 build_pareto.py --dir reports/campaign_grid/grid_t78_wn18rr
+python3 pareto_optimizer.py --cache_path reports/campaign_grid/grid_t78_wn18rr/pareto_cache_wn18rr_v2.json --max_latency 12.0
 ```
 
 **6) Robustness Suite:**
@@ -86,7 +86,7 @@ python3 pareto_optimizer.py --cache_path reports/grid_t78_wn18rr/pareto_cache_wn
 python3 make_perturbed_datasets_v2.py --data_path ./data/WN18RR --seed 42 --configs del05 del10 del20 reldel
 bash run_robustness_t10.sh sanity   # PASS mới chạy tiếp
 bash run_robustness_t10.sh run
-python3 build_robustness.py --dir reports/robustness_t10 --clean_dir reports/grid_t78_wn18rr
+python3 build_robustness.py --dir reports/campaign_robustness/robustness_t10 --clean_dir reports/campaign_grid/grid_t78_wn18rr
 ```
 
 ## Ghi công & trích dẫn
