@@ -1,0 +1,89 @@
+2026-07-19 21:40:57,047 [INFO] Running WN18RR Pruning MLP pipeline (Ablation Mode: v1)
+2026-07-19 21:40:57,047 [INFO] Arguments: Namespace(data_path='data/WN18RR/', gpu=0, topk=0.1, topm=-1, cpu=8, epochs=25, lr=0.001, weight_decay=1e-05, lambda_rank=0.4, n_hard_neg=30, n_random_neg=20, hinge_margin=1.0, early_stop_patience=5, ablation_mode='v1')
+2026-07-19 21:40:57,047 [INFO] ======================================================================
+2026-07-19 21:40:57,048 [INFO] SPEC COMPLIANCE: 7 features, 64->32 architecture, hard-neg mining, multi-seed evaluation
+2026-07-19 21:40:57,048 [INFO] ======================================================================
+2026-07-19 21:40:57,048 [INFO] Loading WN18RR dataset...
+2026-07-19 21:40:59,428 [INFO] KG stats: n_ent=40943, n_rel=11
+2026-07-19 21:40:59,429 [INFO] Initializing PPR Sampler (Pre-loading scores)...
+2026-07-19 21:50:31,613 [INFO] Building KG adjacency structure...
+2026-07-19 21:50:32,006 [INFO] Computing tail_freq_for_q statistics...
+2026-07-19 21:50:32,203 [INFO] Computing rel_match_score statistics...
+2026-07-19 21:50:32,417 [INFO] Collecting candidate pools and extracting features...
+2026-07-19 21:52:25,820 [INFO] Collecting Train Queries | PPR Candidate Pool (size=4094) Coverage: 100.00% (4000/4000)
+2026-07-19 21:53:21,038 [INFO] Collecting Valid Queries | PPR Candidate Pool (size=4094) Coverage: 84.20% (842/1000)
+2026-07-19 21:53:21,038 [INFO] ============================================================
+2026-07-19 21:53:21,038 [INFO] RUNNING WITH SEED: 42
+2026-07-19 21:53:21,038 [INFO] ============================================================
+2026-07-19 21:53:44,824 [INFO] Seed   42 | Epoch  1/25  |  Loss: 0.9242 (BCE: 0.8345, Hinge: 0.2243)  |  Val Realistic R@100: 0.4380  |  LR: 1.00e-03
+2026-07-19 21:54:06,749 [INFO] Seed   42 | Epoch  2/25  |  Loss: 0.8708 (BCE: 0.7880, Hinge: 0.2071)  |  Val Realistic R@100: 0.3590  |  LR: 1.00e-03
+2026-07-19 21:54:25,134 [INFO] Seed   42 | Epoch  3/25  |  Loss: 0.8576 (BCE: 0.7760, Hinge: 0.2039)  |  Val Realistic R@100: 0.3150  |  LR: 1.00e-03
+2026-07-19 21:54:47,102 [INFO] Seed   42 | Epoch  4/25  |  Loss: 0.8536 (BCE: 0.7724, Hinge: 0.2029)  |  Val Realistic R@100: 0.3290  |  LR: 1.00e-03
+2026-07-19 21:55:05,505 [INFO] Seed   42 | Epoch  5/25  |  Loss: 0.8510 (BCE: 0.7699, Hinge: 0.2028)  |  Val Realistic R@100: 0.3380  |  LR: 5.00e-04
+2026-07-19 21:55:27,465 [INFO] Seed   42 | Epoch  6/25  |  Loss: 0.8460 (BCE: 0.7650, Hinge: 0.2024)  |  Val Realistic R@100: 0.3260  |  LR: 5.00e-04
+2026-07-19 21:55:27,465 [INFO] Early stopping for seed 42 at epoch 6
+2026-07-19 21:55:27,470 [INFO] Seed 42 | Best Model loaded (Realistic R@100 = 0.4380)
+2026-07-19 21:55:28,623 [INFO] Seed   42 | Budget K= 10 | MLP (Oracle/Real): 0.2660/0.2660 | PPR (Oracle/Real): 0.2660/0.2660
+2026-07-19 21:55:29,768 [INFO] Seed   42 | Budget K= 50 | MLP (Oracle/Real): 0.3730/0.3730 | PPR (Oracle/Real): 0.3730/0.3730
+2026-07-19 21:55:30,908 [INFO] Seed   42 | Budget K=100 | MLP (Oracle/Real): 0.4380/0.4380 | PPR (Oracle/Real): 0.4380/0.4380
+2026-07-19 21:55:32,062 [INFO] Seed   42 | Budget K=200 | MLP (Oracle/Real): 0.5110/0.5110 | PPR (Oracle/Real): 0.5110/0.5110
+2026-07-19 21:55:33,221 [INFO] Seed   42 | Budget K=500 | MLP (Oracle/Real): 0.6370/0.6370 | PPR (Oracle/Real): 0.6370/0.6370
+2026-07-19 21:55:33,221 [INFO] ============================================================
+2026-07-19 21:55:33,221 [INFO] RUNNING WITH SEED: 123
+2026-07-19 21:55:33,221 [INFO] ============================================================
+2026-07-19 21:55:55,047 [INFO] Seed  123 | Epoch  1/25  |  Loss: 0.9149 (BCE: 0.8265, Hinge: 0.2208)  |  Val Realistic R@100: 0.4000  |  LR: 1.00e-03
+2026-07-19 21:56:14,158 [INFO] Seed  123 | Epoch  2/25  |  Loss: 0.8637 (BCE: 0.7821, Hinge: 0.2041)  |  Val Realistic R@100: 0.3610  |  LR: 1.00e-03
+2026-07-19 21:56:37,092 [INFO] Seed  123 | Epoch  3/25  |  Loss: 0.8572 (BCE: 0.7762, Hinge: 0.2025)  |  Val Realistic R@100: 0.3270  |  LR: 1.00e-03
+2026-07-19 21:56:56,435 [INFO] Seed  123 | Epoch  4/25  |  Loss: 0.8536 (BCE: 0.7733, Hinge: 0.2008)  |  Val Realistic R@100: 0.3240  |  LR: 1.00e-03
+2026-07-19 21:57:19,358 [INFO] Seed  123 | Epoch  5/25  |  Loss: 0.8524 (BCE: 0.7725, Hinge: 0.1997)  |  Val Realistic R@100: 0.3230  |  LR: 5.00e-04
+2026-07-19 21:57:42,283 [INFO] Seed  123 | Epoch  6/25  |  Loss: 0.8439 (BCE: 0.7640, Hinge: 0.1997)  |  Val Realistic R@100: 0.3280  |  LR: 5.00e-04
+2026-07-19 21:57:42,284 [INFO] Early stopping for seed 123 at epoch 6
+2026-07-19 21:57:42,288 [INFO] Seed 123 | Best Model loaded (Realistic R@100 = 0.4000)
+2026-07-19 21:57:43,608 [INFO] Seed  123 | Budget K= 10 | MLP (Oracle/Real): 0.2630/0.2630 | PPR (Oracle/Real): 0.2660/0.2660
+2026-07-19 21:57:44,896 [INFO] Seed  123 | Budget K= 50 | MLP (Oracle/Real): 0.3500/0.3500 | PPR (Oracle/Real): 0.3730/0.3730
+2026-07-19 21:57:46,108 [INFO] Seed  123 | Budget K=100 | MLP (Oracle/Real): 0.4000/0.4000 | PPR (Oracle/Real): 0.4380/0.4380
+2026-07-19 21:57:47,324 [INFO] Seed  123 | Budget K=200 | MLP (Oracle/Real): 0.4990/0.4990 | PPR (Oracle/Real): 0.5110/0.5110
+2026-07-19 21:57:48,548 [INFO] Seed  123 | Budget K=500 | MLP (Oracle/Real): 0.6370/0.6370 | PPR (Oracle/Real): 0.6370/0.6370
+2026-07-19 21:57:48,548 [INFO] ============================================================
+2026-07-19 21:57:48,548 [INFO] RUNNING WITH SEED: 1234
+2026-07-19 21:57:48,549 [INFO] ============================================================
+2026-07-19 21:58:07,675 [INFO] Seed 1234 | Epoch  1/25  |  Loss: 0.9030 (BCE: 0.8170, Hinge: 0.2151)  |  Val Realistic R@100: 0.3870  |  LR: 1.00e-03
+2026-07-19 21:58:30,397 [INFO] Seed 1234 | Epoch  2/25  |  Loss: 0.8631 (BCE: 0.7813, Hinge: 0.2044)  |  Val Realistic R@100: 0.3660  |  LR: 1.00e-03
+2026-07-19 21:58:53,199 [INFO] Seed 1234 | Epoch  3/25  |  Loss: 0.8579 (BCE: 0.7759, Hinge: 0.2051)  |  Val Realistic R@100: 0.3470  |  LR: 1.00e-03
+2026-07-19 21:59:12,405 [INFO] Seed 1234 | Epoch  4/25  |  Loss: 0.8505 (BCE: 0.7688, Hinge: 0.2042)  |  Val Realistic R@100: 0.3460  |  LR: 1.00e-03
+2026-07-19 21:59:35,192 [INFO] Seed 1234 | Epoch  5/25  |  Loss: 0.8510 (BCE: 0.7687, Hinge: 0.2058)  |  Val Realistic R@100: 0.3190  |  LR: 5.00e-04
+2026-07-19 21:59:54,316 [INFO] Seed 1234 | Epoch  6/25  |  Loss: 0.8442 (BCE: 0.7629, Hinge: 0.2032)  |  Val Realistic R@100: 0.3200  |  LR: 5.00e-04
+2026-07-19 21:59:54,316 [INFO] Early stopping for seed 1234 at epoch 6
+2026-07-19 21:59:54,321 [INFO] Seed 1234 | Best Model loaded (Realistic R@100 = 0.3870)
+2026-07-19 21:59:55,572 [INFO] Seed 1234 | Budget K= 10 | MLP (Oracle/Real): 0.2640/0.2640 | PPR (Oracle/Real): 0.2660/0.2660
+2026-07-19 21:59:56,767 [INFO] Seed 1234 | Budget K= 50 | MLP (Oracle/Real): 0.3390/0.3390 | PPR (Oracle/Real): 0.3730/0.3730
+2026-07-19 21:59:57,917 [INFO] Seed 1234 | Budget K=100 | MLP (Oracle/Real): 0.3870/0.3870 | PPR (Oracle/Real): 0.4380/0.4380
+2026-07-19 21:59:59,082 [INFO] Seed 1234 | Budget K=200 | MLP (Oracle/Real): 0.4660/0.4660 | PPR (Oracle/Real): 0.5110/0.5110
+2026-07-19 22:00:03,827 [INFO] Seed 1234 | Budget K=500 | MLP (Oracle/Real): 0.6370/0.6370 | PPR (Oracle/Real): 0.6370/0.6370
+2026-07-19 22:00:03,827 [INFO] ======================================================================
+2026-07-19 22:00:03,828 [INFO]                     AGGREGATED MULTI-SEED ANALYSIS                 
+2026-07-19 22:00:03,828 [INFO] ======================================================================
+2026-07-19 22:00:03,837 [INFO] Aggregated summary saved to: ./data/WN18RR/budget_results/pruning_mlp_aggregated_summary_ablation_v1.csv
+2026-07-19 22:00:03,837 [INFO] PPR Candidate Pool Upper Bound (Validation Coverage): 84.20%
+2026-07-19 22:00:03,838 [INFO] --------------------------------------------------------------------------------
+2026-07-19 22:00:03,838 [INFO] 1. REALISTIC EVALUATION (Coi query ngoài candidate pool là miss - Đúng thực tế)
+2026-07-19 22:00:03,838 [INFO] --------------------------------------------------------------------------------
+2026-07-19 22:00:03,838 [INFO] Budget K  |  PIVOT (MLP) Recall (Mean±Std)  |  PPR-only Recall (Mean±Std)  |  Δ Mean
+2026-07-19 22:00:03,838 [INFO] ----------|---------------------------------|------------------------------|----------
+2026-07-19 22:00:03,838 [INFO]       10  |  0.2643 ± 0.0012       |  0.2660 ± 0.0000        |  -0.0017
+2026-07-19 22:00:03,839 [INFO]       50  |  0.3540 ± 0.0142       |  0.3730 ± 0.0000        |  -0.0190
+2026-07-19 22:00:03,839 [INFO]      100  |  0.4083 ± 0.0216       |  0.4380 ± 0.0000        |  -0.0297
+2026-07-19 22:00:03,839 [INFO]      200  |  0.4920 ± 0.0190       |  0.5110 ± 0.0000        |  -0.0190
+2026-07-19 22:00:03,839 [INFO]      500  |  0.6370 ± 0.0000       |  0.6370 ± 0.0000        |  +0.0000
+2026-07-19 22:00:03,839 [INFO] --------------------------------------------------------------------------------
+2026-07-19 22:00:03,840 [INFO] 2. ORACLE EVALUATION (Chèn true tail vào pool nếu bị PPR bỏ lỡ)
+2026-07-19 22:00:03,840 [INFO] --------------------------------------------------------------------------------
+2026-07-19 22:00:03,840 [INFO] Budget K  |  PIVOT (MLP) Recall (Mean±Std)  |  PPR-only Recall (Mean±Std)  |  Δ Mean
+2026-07-19 22:00:03,840 [INFO] ----------|---------------------------------|------------------------------|----------
+2026-07-19 22:00:03,840 [INFO]       10  |  0.2643 ± 0.0012       |  0.2660 ± 0.0000        |  -0.0017
+2026-07-19 22:00:03,840 [INFO]       50  |  0.3540 ± 0.0142       |  0.3730 ± 0.0000        |  -0.0190
+2026-07-19 22:00:03,841 [INFO]      100  |  0.4083 ± 0.0216       |  0.4380 ± 0.0000        |  -0.0297
+2026-07-19 22:00:03,841 [INFO]      200  |  0.4920 ± 0.0190       |  0.5110 ± 0.0000        |  -0.0190
+2026-07-19 22:00:03,841 [INFO]      500  |  0.6370 ± 0.0000       |  0.6370 ± 0.0000        |  +0.0000
+2026-07-19 22:00:03,841 [INFO] ================================================================================
+2026-07-19 22:00:03,841 [INFO] Done.

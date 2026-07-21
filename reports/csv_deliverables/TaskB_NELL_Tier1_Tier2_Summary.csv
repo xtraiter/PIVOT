@@ -1,0 +1,5 @@
+Variant,Tier-1 Valid Recall@100 (mean),Tier-1 Valid Recall@100 (std),Tier-2 Valid MRR (mean),Tier-2 Valid MRR (std)
+PPR (Baseline),0.567,0.0,0.5361,0.0
+V2 (4 feat),0.2653,0.018,0.5463,0.0011
+V4 (7 feat),0.604,0.0036,0.5453,0.0006
+L3 (Bỏ rel_match),0.6067,0.0021,0.5461,0.0006

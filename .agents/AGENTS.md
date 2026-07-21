@@ -1,6 +1,6 @@
 # PIVOT Customization Rules
 
-> **[PHẠM VI DỰ ÁN]** Bộ dữ liệu **FB15k-237 đã được loại bỏ** khỏi phạm vi nghiên cứu PIVOT. Chỉ làm việc với 3 bộ dữ liệu: **WN18RR**, **NELL-995 (nell)**, và **YAGO3-10 (YAGO)**. Không thêm bất kỳ cấu hình hoặc code nào liên quan đến FB15k-237 trong tương lai.
+> **[PHẠM VI DỰ ÁN]** Bộ dữ liệu **FB15k-237 đã được loại bỏ** khỏi phạm vi nghiên cứu PIVOT. Làm việc với 4 bộ dữ liệu: **WN18RR**, **NELL-995 (nell)**, **YAGO3-10 (YAGO)**, và **OGBL-BIOKG (biokg)**. Không thêm bất kỳ cấu hình hoặc code nào liên quan đến FB15k-237 trong tương lai.
 
 Sử dụng quy tắc này để tự động đồng bộ hóa tài liệu thay đổi mã nguồn qua các phiên làm việc (chat sessions) khác nhau:
 

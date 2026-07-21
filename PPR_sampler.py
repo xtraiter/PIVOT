@@ -69,7 +69,7 @@ def _load_one_ppr(h, ppr_save_path):
     return h, None
 
 class pprSampler():
-    def __init__(self, n_ent:int, n_rel:int, topk:int, topm:int, homoEdges:list, edge_index:list, data_path:str, split='train', args=None):
+    def __init__(self, n_ent:int, n_rel:int, topk:int, topm:int, homoEdges:list, edge_index:list, data_path:str, split='train', args=None, mlp_ablation_mode='v4'):
         ''' 
             args:
             topk: number of sampled nodes for one head entity 
@@ -78,6 +78,7 @@ class pprSampler():
         '''
         print('==> initializing ppr sampler...')
         self.args = args
+        self.mlp_ablation_mode = mlp_ablation_mode.lower()
         self.n_ent = n_ent
         self.n_samp_ent = args.n_samp_ent
         self.n_rel = n_rel
@@ -131,29 +132,9 @@ class pprSampler():
         
         self.ppr_cache = {}
         # Pre-load all PPR scores in memory to avoid extremely slow disk I/O / unpickling during training
-        if self.n_ent <= 50000:
-            if not hasattr(pprSampler, '_global_ppr_scores') or pprSampler._global_ppr_scores is None:
-                print(f"==> Pre-loading all {self.n_ent} PPR scores into memory...")
-                ppr_scores_matrix = np.zeros((self.n_ent, self.n_ent), dtype=np.float32)
-                
-                import multiprocessing
-                from functools import partial
-                num_loader_workers = min(32, multiprocessing.cpu_count())
-                worker_func = partial(_load_one_ppr, ppr_save_path=self.ppr_savePath)
-                
-                with multiprocessing.Pool(processes=num_loader_workers) as pool:
-                    for h, scores in tqdm(pool.imap_unordered(worker_func, range(self.n_ent), chunksize=200), total=self.n_ent, desc="Loading PPR scores", ncols=50, leave=False):
-                        if scores is not None:
-                            for k, v in scores.items():
-                                ppr_scores_matrix[h, k] = v
-                pprSampler._global_ppr_scores = ppr_scores_matrix
-            else:
-                print(f"==> Re-using pre-loaded PPR scores from memory cache for split '{split}'")
-                
-            self.all_ppr_scores = pprSampler._global_ppr_scores
-            self.use_in_memory_ppr = True
-        else:
-            self.use_in_memory_ppr = False
+        
+        # OOM FIX: Do not preload 40k x 40k array into memory (saves 6.4GB)
+        self.use_in_memory_ppr = False
 
         # build sparse tensor self.PPR_W for matrix-computation PPR
         '''
@@ -177,8 +158,11 @@ class pprSampler():
                 self.degrees[i] = len(self.adj[i])
 
             self.direct_edges_set = set()
+            self.direct_targets = defaultdict(set)
             for h, r, t in edge_index:
-                self.direct_edges_set.add((int(h), int(r), int(t)))
+                h_i, r_i, t_i = int(h), int(r), int(t)
+                self.direct_edges_set.add((h_i, r_i, t_i))
+                self.direct_targets[(h_i, r_i)].add(t_i)
 
             tail_freq = np.zeros((self.n_ent, 2 * self.n_rel + 2), dtype=np.float32)
             for h, r, t in edge_index:
@@ -193,7 +177,10 @@ class pprSampler():
             self.rel_dist = torch.tensor(rel_counts / (row_sums + 1e-8))
 
             from learned_pruning import PruningMLP
-            self.pruning_model = PruningMLP(in_dim=7, hidden=64)
+            mode_to_dim = {'v1': 1, 'v2': 4, 'v3': 5, 'v4': 7, 'l1': 6, 'l2': 6, 'l3': 6}
+            ablation_mode = getattr(self.args, 'mlp_ablation_mode', 'v4')
+            in_dim = mode_to_dim.get(ablation_mode, 7)
+            self.pruning_model = PruningMLP(in_dim=in_dim, hidden=64)
             if hasattr(self.args, 'pruning_model_path') and self.args.pruning_model_path:
                 print(f"==> Loading learned pruning model from: {self.args.pruning_model_path}")
                 self.pruning_model.load_state_dict(torch.load(self.args.pruning_model_path, map_location='cpu'))
@@ -254,24 +241,51 @@ class pprSampler():
 
         deg_log = torch.log1p(self.degrees[cids_cpu]).to(ppr_scores.device)
 
-        hop_dist = torch.full((N,), 4.0, device=ppr_scores.device)
+        # Vectorized BFS hop distance mapping
         bfs_dists = get_hop_distances(self.adj, u, max_hops=3)
-        for i, cid in enumerate(cids_cpu.tolist()):
-            if cid in bfs_dists:
-                hop_dist[i] = float(bfs_dists[cid])
+        mapping = np.full(self.n_ent, 4.0, dtype=np.float32)
+        for node, dist in bfs_dists.items():
+            mapping[node] = dist
+        hop_dist = torch.tensor(mapping[cids_cpu.numpy()], device=ppr_scores.device)
 
+        # Vectorized direct edge membership checking
+        direct_tails = self.direct_targets.get((u, q), set())
         is_direct = torch.zeros(N, device=ppr_scores.device)
-        for i, cid in enumerate(cids_cpu.tolist()):
-            if (u, q, cid) in self.direct_edges_set:
-                is_direct[i] = 1.0
+        if direct_tails:
+            is_direct = torch.tensor(np.isin(cids_cpu.numpy(), list(direct_tails)), dtype=torch.float32, device=ppr_scores.device)
 
         tail_freq_q = self.tail_freq_norm[cids_cpu, q].to(ppr_scores.device)
         rel_match = self.rel_dist[cids_cpu, q].to(ppr_scores.device)
 
-        feats = torch.stack([
-            ppr_log, ppr_rank_pct, deg_log, hop_dist,
-            is_direct, tail_freq_q, rel_match
-        ], dim=1)
+        feats_dict = {
+            "ppr_log": ppr_log,
+            "ppr_rank_pct": ppr_rank_pct,
+            "deg_log": deg_log,
+            "hop_dist": hop_dist,
+            "is_direct": is_direct,
+            "tail_freq_q": tail_freq_q,
+            "rel_match": rel_match
+        }
+        
+        mode = self.mlp_ablation_mode
+        if mode == "v1":
+            selected = ["ppr_log"]
+        elif mode == "v2":
+            selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist"]
+        elif mode == "v3":
+            selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist", "is_direct"]
+        elif mode == "v4":
+            selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist", "is_direct", "tail_freq_q", "rel_match"]
+        elif mode == "l1":
+            selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist", "tail_freq_q", "rel_match"]
+        elif mode == "l2":
+            selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist", "is_direct", "rel_match"]
+        elif mode == "l3":
+            selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist", "is_direct", "tail_freq_q"]
+        else:
+            selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist", "is_direct", "tail_freq_q", "rel_match"]
+
+        feats = torch.stack([feats_dict[f] for f in selected], dim=1)
 
         feats = (feats - feats.mean(0, keepdim=True)) / (feats.std(0, keepdim=True) + 1e-6)
         return feats
@@ -281,7 +295,10 @@ class pprSampler():
         if hasattr(self, 'use_in_memory_ppr') and self.use_in_memory_ppr:
             ppr_scores = self.all_ppr_scores[ent]
         else:
-            ppr_scores = np.array(list(self.getPPRscores(ent).values()))
+            scores_dict = self.getPPRscores(ent)
+            ppr_scores = np.zeros(self.n_ent, dtype=np.float32)
+            for k, v in scores_dict.items():
+                ppr_scores[k] = v
         
         # Use learned pruning if enabled
         if hasattr(self.args, 'use_learned_pruning') and self.args.use_learned_pruning and self.topk < self.n_ent:

@@ -37,7 +37,9 @@ from learned_pruning import PruningMLP, prune_candidates
 # 1. Setup Logging
 # ======================================================================
 log_dir = "./data/WN18RR/budget_results"
+log_dir = "./data/WN18RR/budget_results"
 os.makedirs(log_dir, exist_ok=True)
+# We will set the log file inside main() after parsing args, but setup a dummy here just in case.
 log_file = os.path.join(log_dir, "pruning_mlp_v2.log")
 
 # Clear existing log handlers to avoid duplication
@@ -114,11 +116,19 @@ def main():
     parser.add_argument('--n_random_neg', type=int, default=20)
     parser.add_argument('--hinge_margin', type=float, default=1.0)
     parser.add_argument('--early_stop_patience', type=int, default=5)
-    args = parser.parse_args()
+    parser.add_argument('--ablation_mode', type=str, default='v4', help='v1, v2, v3, v4, l1, l2, l3')
+    cmd_args = parser.parse_args()
 
-    torch.cuda.set_device(args.gpu)
+    torch.cuda.set_device(cmd_args.gpu)
 
-    logger.info(f"Arguments: {args}")
+    # Re-setup logging with ablation mode
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+    log_file_run = os.path.join(log_dir, f"pruning_mlp_v2_ablation_{cmd_args.ablation_mode}.log")
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s', handlers=[logging.FileHandler(log_file_run, mode='w'), logging.StreamHandler()])
+    
+    logger.info(f"Running WN18RR Pruning MLP pipeline (Ablation Mode: {cmd_args.ablation_mode})")
+    logger.info(f"Arguments: {cmd_args}")
     logger.info("=" * 70)
     logger.info("SPEC COMPLIANCE: 7 features, 64->32 architecture, hard-neg mining, multi-seed evaluation")
     logger.info("=" * 70)
@@ -130,10 +140,10 @@ def main():
     class MockArgs:
         pass
     loader_args = MockArgs()
-    loader_args.data_path = args.data_path
-    loader_args.cpu = args.cpu
-    loader_args.topk = args.topk
-    loader_args.topm = args.topm
+    loader_args.data_path = cmd_args.data_path
+    loader_args.cpu = cmd_args.cpu
+    loader_args.topk = cmd_args.topk
+    loader_args.topm = cmd_args.topm
     loader_args.fact_ratio = 0.75
     loader_args.remove_1hop_edges = False
 
@@ -148,14 +158,14 @@ def main():
     # Build PPR Sampler (Done once to save time)
     # ------------------------------------------------------------------
     logger.info("Initializing PPR Sampler (Pre-loading scores)...")
-    loader_args.n_samp_ent = int(args.topk * n_ent)
+    loader_args.n_samp_ent = int(cmd_args.topk * n_ent)
     loader_args.n_samp_edge = -1
     loader_args.add_manual_edges = False
 
     fact_homo_edges = list(set([(h, t) for (h, r, t) in loader.fact_data]))
     fact_data = np.concatenate([np.array(loader.fact_data), loader.idd_data], 0)
     train_sampler = pprSampler(n_ent, n_rel, loader_args.n_samp_ent, loader_args.n_samp_edge,
-                               fact_homo_edges, fact_data, args.data_path, split='train', args=loader_args)
+                               fact_homo_edges, fact_data, cmd_args.data_path, split='train', args=loader_args)
 
     # ------------------------------------------------------------------
     # Build KG adjacency, degrees, direct edges, relation stats
@@ -220,10 +230,23 @@ def main():
         tail_freq_q = tail_freq_norm[cids_cpu, q].to(ppr_scores.device)
         rel_match = rel_dist[cids_cpu, q].to(ppr_scores.device)
 
-        feats = torch.stack([
-            ppr_log, ppr_rank_pct, deg_log, hop_dist,
-            is_direct, tail_freq_q, rel_match
-        ], dim=1)
+        feats_dict = {
+            "ppr_log": ppr_log, "ppr_rank_pct": ppr_rank_pct, "deg_log": deg_log,
+            "hop_dist": hop_dist, "is_direct": is_direct,
+            "tail_freq_q": tail_freq_q, "rel_match": rel_match
+        }
+        
+        mode = cmd_args.ablation_mode.lower()
+        if mode == "v1": selected = ["ppr_log"]
+        elif mode == "v2": selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist"]
+        elif mode == "v3": selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist", "is_direct"]
+        elif mode == "v4": selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist", "is_direct", "tail_freq_q", "rel_match"]
+        elif mode == "l1": selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist", "tail_freq_q", "rel_match"]
+        elif mode == "l2": selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist", "is_direct", "rel_match"]
+        elif mode == "l3": selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist", "is_direct", "tail_freq_q"]
+        else: selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist", "is_direct", "tail_freq_q", "rel_match"]
+        
+        feats = torch.stack([feats_dict[f] for f in selected], dim=1)
 
         feats = (feats - feats.mean(0, keepdim=True)) / (feats.std(0, keepdim=True) + 1e-6)
         return feats
@@ -293,19 +316,19 @@ def main():
         torch.manual_seed(seed)
         
         # 7 input, hidden=64 -> 32 (spec v2)
-        in_dim = 7
+        in_dim = len(build_features(0, 0, torch.tensor([0]), torch.tensor([0.0])).squeeze(0))
         model = PruningMLP(in_dim=in_dim, hidden=64).cuda()
-        optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=cmd_args.lr, weight_decay=cmd_args.weight_decay)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode='max', factor=0.5, patience=3
         )
 
         best_recall = 0.0
         patience_counter = 0
-        best_model_path = os.path.join(log_dir, f"pruning_mlp_v2_best_seed_{seed}.pt")
+        best_model_path = os.path.join(log_dir, f"pruning_mlp_v2_best_seed_{seed}_ablation_{cmd_args.ablation_mode}.pt")
 
         # Training loop
-        for epoch in range(args.epochs):
+        for epoch in range(cmd_args.epochs):
             model.train()
             total_loss = 0.0
             total_bce = 0.0
@@ -324,7 +347,7 @@ def main():
                 # Hard negative sampling
                 neg_indices = sample_negatives(
                     ppr_scores, true_idx,
-                    n_hard=args.n_hard_neg, n_random=args.n_random_neg
+                    n_hard=cmd_args.n_hard_neg, n_random=cmd_args.n_random_neg
                 )
 
                 # Subset: true tail + sampled negatives
@@ -345,9 +368,9 @@ def main():
                 # Pairwise hinge
                 true_score = scores[subset_true_idx]
                 neg_scores = scores[1:]
-                hinge_loss = F.relu(args.hinge_margin - (true_score - neg_scores)).mean()
+                hinge_loss = F.relu(cmd_args.hinge_margin - (true_score - neg_scores)).mean()
 
-                loss = bce_loss + args.lambda_rank * hinge_loss
+                loss = bce_loss + cmd_args.lambda_rank * hinge_loss
                 loss.backward()
                 optimizer.step()
 
@@ -375,7 +398,7 @@ def main():
             scheduler.step(val_recall)
 
             logger.info(
-                f"Seed {seed:4d} | Epoch {epoch+1:2d}/{args.epochs}  |  "
+                f"Seed {seed:4d} | Epoch {epoch+1:2d}/{cmd_args.epochs}  |  "
                 f"Loss: {avg_loss:.4f} (BCE: {avg_bce:.4f}, Hinge: {avg_hinge:.4f})  |  "
                 f"Val Realistic R@100: {val_recall:.4f}  |  "
                 f"LR: {optimizer.param_groups[0]['lr']:.2e}"
@@ -387,7 +410,7 @@ def main():
                 torch.save(model.state_dict(), best_model_path)
             else:
                 patience_counter += 1
-                if patience_counter >= args.early_stop_patience:
+                if patience_counter >= cmd_args.early_stop_patience:
                     logger.info(f"Early stopping for seed {seed} at epoch {epoch+1}")
                     break
 
@@ -477,7 +500,7 @@ def main():
 
     df_agg = pd.DataFrame(rows)
     # Save CSV summary
-    csv_out = os.path.join(log_dir, "pruning_mlp_aggregated_summary.csv")
+    csv_out = os.path.join(log_dir, f"pruning_mlp_aggregated_summary_ablation_{cmd_args.ablation_mode}.csv")
     df_agg.to_csv(csv_out, index=False)
     logger.info(f"Aggregated summary saved to: {csv_out}")
 

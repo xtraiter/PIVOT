@@ -1,0 +1,1 @@
+V4 Tier-2 Valid mean 0.5687 đối chiếu neo Valid grid 0.5691, lệch 0.0004 < 0.003 -> PASS

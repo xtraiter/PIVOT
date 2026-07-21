@@ -1164,6 +1164,18 @@ Dưới đây là chi tiết các thay đổi từ mức biến số đến mứ
   +                )
   ```
 
+*   **Ép kiểu scores sang float32 khi dùng AMP**
+```diff
+@@ -142,6 +142,7 @@ class GNN_auto(torch.nn.Module):
+         
+         # re-indexing
+         scores_all = torch.zeros((n, self.loader.n_ent)).cuda()
+-        scores_all[batch_idxs, abs_idxs] = scores
++        scores_all[batch_idxs, abs_idxs] = scores.float()
+ 
+         return scores_all
+```
+
 ### 4. base_model.py (Tích hợp AMP FP16, logs chi tiết & fix warning PyTorch 2.6+)
 ```diff
 diff --git a/base_model.py b/base_model.py
@@ -1418,28 +1430,13 @@ index 2aadd70..7048b13 100644
 +        eval_latency_ms = (time.perf_counter() - i_time) * 1000.0
 +        eval_peak_mem_mb = self._cuda_peak_memory_mb()
 +        out_str = '[VALID] MRR:%.6f H@1:%.6f H@10:%.6f\t [TEST] MRR:%.6f H@1:%.6f H@10:%.6f \t[TIME] train:%.4f inference:%.4f \t[LATENCY] eval_total_ms:%.2f data_prep_ms:%.2f forward_ms:%.2f ranking_ms:%.2f \t[PEAK_GPU_MEM] %.2fMB\n'%(v_mrr, v_h1, v_h10, t_mrr, t_h1, t_h10, self.train_time, eval_latency_ms / 1000.0, eval_latency_ms, data_prep_ms, forward_ms, ranking_ms, eval_peak_mem_mb)
-         return v_mrr, out_str
-```
-
-### 5. train_auto.py (Sửa đổi kiểu Seed & Tự động Git Push & Tham số mới)
-```diff
-diff --git a/train_auto.py b/train_auto.py
-index 71cfa17..02e85be 100644
---- a/train_auto.py
-+++ b/train_auto.py
-@@ -8,9 +8,37 @@ from base_model import BaseModel
- from utils import *
- from PPR_sampler import pprSampler
- 
-+def git_push_update(message="Auto-commit checkpoints and logs"):
-+    import subprocess
 +    try:
 +        res = subprocess.run(["git", "remote"], capture_output=True, text=True)
 +        if not res.stdout.strip():
 +            print("==> Git remote not found. Skipping auto-push.")
 +            return
 +            
-+        subprocess.run(["git", "add", "data/WN18RR/results/", "data/nell/results/", "data/YAGO/results/", "data/WN18RR/saveModel/", "data/nell/saveModel/", "data/YAGO/saveModel/", "changes_summary.md", "README.md", "model.py", "base_model.py", "PPR_sampler.py", "train_auto.py", "search_auto.py", ".gitignore"], capture_output=True)
++        subprocess.run(["git", "add", "reports/artifacts/WN18RR/results/", "reports/artifacts/nell/results/", "reports/artifacts/YAGO/results/", "reports/artifacts/WN18RR/saveModel/", "reports/artifacts/nell/saveModel/", "reports/artifacts/YAGO/saveModel/", "changes_summary.md", "README.md", "model.py", "base_model.py", "PPR_sampler.py", "train_auto.py", "search_auto.py", ".gitignore"], capture_output=True)
 +        
 +        status = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
 +        if not status.stdout.strip():
@@ -1734,7 +1731,7 @@ from load_data import DataLoader
 from PPR_sampler import pprSampler
 from learned_pruning import PruningMLP, prune_candidates
 
-log_dir = "./data/WN18RR/budget_results"
+log_dir = "./reports/artifacts/WN18RR/budget_results"
 os.makedirs(log_dir, exist_ok=True)
 log_file = os.path.join(log_dir, "pruning_mlp_v2.log")
 
@@ -2466,19 +2463,144 @@ if __name__ == "__main__":
         print(f"    Metrics: MRR={best_cfg['MRR']:.4f} | Latency={best_cfg['latency_per_query_ms']:.2f}ms")
 
     if args.min_mrr is not None:
-        best_cfg, ok = controller.get_min_latency_under_mrr(args.min_mrr)
-        print(f"\n--> Query: Min Latency under MRR >= {args.min_mrr}")
-        print(f"    Success: {ok}")
-        print(f"    Selected config: alpha={best_cfg['alpha']}, beta={best_cfg['beta']}, layer={best_cfg['layer']}, budget={best_cfg['budget']}")
-        print(f"    Metrics: MRR={best_cfg['MRR']:.4f} | Latency={best_cfg['latency_per_query_ms']:.2f}ms")
++        best_cfg, ok = controller.get_min_latency_under_mrr(args.min_mrr)
++        print(f"\n--> Query: Min Latency under MRR >= {args.min_mrr}")
++        print(f"    Success: {ok}")
++        print(f"    Selected config: alpha={best_cfg['alpha']}, beta={best_cfg['beta']}, layer={best_cfg['layer']}, budget={best_cfg['budget']}")
++        print(f"    Metrics: MRR={best_cfg['MRR']:.4f} | Latency={best_cfg['latency_per_query_ms']:.2f}ms")
 
     if args.plot_path is not None:
-        controller.plot_frontier(args.plot_path, args.dataset_name)
+         controller.plot_frontier(args.plot_path, args.dataset_name)
 ```
+
+
+
+
+---
+
+## III-B. THAY ĐỔI TUẦN 9 (2026-07-10) — Evaluation Protocol
+
+### 7. train_auto.py — Thêm `--eval_split`
+
+```diff
+ parser.add_argument('--no_amp', action='store_true')
+ parser.add_argument('--compile', action='store_true', help='Compile model using torch.compile')
++parser.add_argument('--eval_split', type=str, default='all', choices=['all', 'valid', 'test'],
++                    help='Which split to evaluate during only_eval')
+ args = parser.parse_args()
+```
+
+```diff
+         # only do evaluation, and then exit
+         if args.only_eval:
+-            valid_mrr, out_str = model.evaluate(verbose=True, rank_CR=False)
++            eval_val = (args.eval_split in ['all', 'valid'])
++            eval_test = (args.eval_split in ['all', 'test'])
++            valid_mrr, out_str = model.evaluate(verbose=True, rank_CR=False,
++                                                eval_val=eval_val, eval_test=eval_test)
+```
+
+**Mục đích:** Cho phép sweep alpha trên Valid (`--eval_split valid`) và đánh giá Test một lần duy nhất tại alpha\* (`--eval_split test`), tránh data snooping vào tập Test.
+
+---
+
+### 8. base_model.py — Thêm `return_ranks` để dump per-query ranks
+
+```diff
+-def evaluate(self, eval_val=True, eval_test=True, verbose=False, rank_CR=False, mean_rank=False):
++def evaluate(self, eval_val=True, eval_test=True, verbose=False, rank_CR=False, mean_rank=False, return_ranks=False):
+     ranking = []
++    val_ranking_ret = []
++    test_ranking_ret = []
+     ...
+             ranks = cal_ranks(scores, objs, filters)
+             ranking += ranks
++            if return_ranks:
++                val_ranking_ret += ranks   # trong vòng lặp val
+     ...
+             ranks = cal_ranks(scores, objs, filters)
+             ranking += ranks
++            if return_ranks:
++                test_ranking_ret += ranks  # trong vòng lặp test
+     ...
++    if return_ranks:
++        return v_mrr, out_str, val_ranking_ret, test_ranking_ret
+     return v_mrr, out_str
+```
+
+**Mục đích:** Dump danh sách rank per-query để chạy các phân tích thống kê chi tiết.
+
+---
+
+## III-C. THAY ĐỔI MỞ RỘNG OGBL-BIOKG (2026-07-10) — Dataset Mới
+
+### 10. train_auto.py — Thêm config params cho `biokg`
+
+```diff
+     elif dataset == 'YAGO':
+         params = {'lr': 0.001, 'hidden_dim': 64, 'attn_dim': 2, 'n_layer': 8, 'act': 'relu', ...}
++    elif dataset == 'biokg':
++        # OGBL-BIOKG: ~94k entities, 51 relations, ~4.76M train triples
++        # Conservative params (large dataset, 16GB VRAM, AMP enabled)
++        params = {'lr': 0.001, 'hidden_dim': 64, 'attn_dim': 4, 'n_layer': 6, 'act': 'relu',
++                  'initializer': 'binary', 'concatHidden': False, 'shortcut': False,
++                  'readout': 'linear', 'decay_rate': 0.9429, 'lamb': 0.0009, 'dropout': 0.1}
+     else:
+         exit()
+```
+
+**Mục đích:** Cho phép `train_auto.py` nhận `--data_path ./data/biokg/` và tự động dùng hyperparameters phù hợp với dữ liệu lớn.
+
+---
+
+## III-D. DỌN DẸP & TỔ CHỨC LẠI DỰ ÁN (2026-07-16) — File Hygiene
+
+### 11. Đổi tên file checkpoint chính thức
+
+| File cũ | File mới | Lý do |
+|:---|:---|:---|
+| `saveModel/topk_0.1_layer_8_ValMRR_0.563_seed42.pt` | `...0.563_seed42_v1_hybrid_joint.pt` | Checkpoint từ lần train thử nghiệm hybrid — phân biệt với tái lập chính |
+| `saveModel/topk_0.1_layer_8_ValMRR_0.564_seed42_v2.pt` | `...0.564_seed42.pt` | Checkpoint tái lập chính thức WN18RR seed 42 |
+
+### 12. Đổi tên file kết quả quan trọng (WN18RR/results)
+
+| File cũ (timestamp) | File mới (mô tả) |
+|:---|:---|
+| `2026-06-24-13:15:51.txt` | `reproduce_ppr_seed42_best_ep70.txt` |
+| `2026-06-25-06:14:58.txt` | `reproduce_ppr_seed123_best_ep81.txt` |
+| `2026-06-24-02:13:30.txt` | `reproduce_ppr_seed1234_best_ep77.txt` |
+| `2026-07-01-02:26:20.txt` | `joint_gnn_100pct_mlp_seed42.txt` |
+| `2026-07-01-07:00:38.txt` | `joint_gnn_manual_edges_seed42.txt` |
+| `2026-07-01-08:45:26.txt` | `hybrid_50_50_mlp_ppr_seed42_epoch116.txt` |
+| `2026-07-02-04:29:17.txt` | `hybrid_50_50_mlp_ppr_seed42_full_run.txt` |
+| `2026-07-03-08:34:11_rerun.txt` | `eval_only_seed42_checkpoint_mlp_loaded.txt` |
+| `2026-07-03-09:05:00_baseline.txt` | `eval_only_seed42_ppr_baseline.txt` |
+| `2026-06-30-12:36:13.txt` | `early_experiment_seed42_sanity.txt` |
+
+### 13. Đổi tên file kết quả quan trọng (nell/results)
+
+| File cũ | File mới |
+|:---|:---|
+| `reports/artifacts/nell/results/2026-07-06-19:02:29.txt` | `train_ppr_seed42_from_ckpt_497.txt` |
+| `reports/artifacts/nell/results/2026-07-08-20:04:36.txt` | `train_ppr_seed1234_resume.txt` |
+| `reports/artifacts/nell/results/2026-07-09-11:57:49.txt` | `train_ppr_seed123_resume.txt` |
+
+### 14. Archive và xóa file tạm
+
+- `archive_budget_sweep/`: WN18RR results từ ngày 2026-07-05 (budget sweep từng điểm)
+- `archive_alpha_sweep/`: WN18RR results từ 2026-07-12→14; NELL results từ 2026-07-13→15
+- Xóa `reports/test_write.txt`, `WN18RR/results/debug_seed_42_alpha_0.5.log`, `nell/results/debug_*.log`
+
+### 15. Cập nhật đường dẫn trong script
+
+`sweep_alpha_wn18rr.py`, `sweep_alpha_wn18rr_fact95.py`: cập nhật `0.564_seed42_v2.pt` → `0.564_seed42.pt`.
 
 ---
 
 ## IV. TÓM TẮT SO SÁNH CẤU TRÚC TẬP TIN (FILE SYSTEM STRUCTURE SUMMARY)
+
+
+
 
 Dưới đây là sơ đồ so sánh trực quan cấu trúc thư mục dự án ban đầu (Paper) và sau khi nâng cấp tối ưu hóa (PIVOT):
 
@@ -2498,14 +2620,16 @@ graph TD
         opt1[model.py: gradient checkpointing & dynamic embedding size]
         opt2[load_data.py: query relation propagation]
         opt3[PPR_sampler.py: multiprocessing PPR & loading cache & hybrid sampler]
-        opt4[train_auto.py: seed int & git push automation]
-        opt5[base_model.py: AMP training & detailed profiling logs]
+        opt4[train_auto.py: seed int, git push & --eval_split]
+        opt5[base_model.py: AMP training, profiling logs & return_ranks]
         
         new1[learned_pruning.py: PruningMLP & loss functions]
         new2[run_learned_pruning_wn18rr.py: HPO & eval script]
         new3[budgeted_protocol.py: Accuracy-Latency Sweep & Pareto frontier]
         new4[changes_summary.md: Chat transfer synchronization document]
         new5[pareto_optimizer.py: BudgetController & Pareto selection logic]
+        new6[alpha_sweep_results_no_amp.md: FP32 WN18RR sweep results]
+        new7[alpha_sweep_results_nell_no_amp.md: FP32 NELL-995 sweep results]
     end
 
     orig1 -.-> opt1
@@ -2514,3 +2638,758 @@ graph TD
     orig4 -.-> opt4
     orig5 -.-> opt5
 ```
+
+---
+
+## Phụ Lục T7–8: Công Cụ Pareto Grid Search (Bổ sung 2026-07-18)
+
+Ba file công cụ mới được thêm vào workspace trong Tuần 7–8 để thực hiện toàn bộ chiến dịch grid search và tổng hợp Pareto frontier:
+
+| File | Vai trò |
+|:---|:---|
+| uild_pareto.py | Parse toàn bộ log grid T7-8 (valid + test split), tổng hợp mean±std trên 3 seed, trích frontier không bị trội theo Valid MRR, vẽ Figure 1 (matplotlib), lưu cache JSON v2 và báo cáo markdown. |
+| 
+un_grid_t78.sh | Bash script điều phối 72 lượt WN18RR + 48 lượt NELL-995 (FP32, --no_amp, --only_eval). Hỗ trợ INCLUDE_HYBRID=1 cho hybrid mode. Có sanity check tự động kiểm tra [VALID] tag và chênh lệch VRAM rerank vs hybrid trước khi chạy toàn chiến dịch. |
+| pareto_optimizer.py | BudgetController: parse cache JSON v2, lọc frontier theo ràng buộc (--max_latency, --min_mrr), trả về cấu hình tối ưu Pareto. |
+
+**Artifacts mới:**
+- grid_t78_wn18rr/ — 72 log FP32 (6 method × 4 budget × 3 seed × 1 dataset)
+- grid_t78_nell/ — 48 log FP32 (4 method × 4 budget × 3 seed × 1 dataset; không có hybrid)
+- grid_t78_wn18rr/pareto_cache_wn18rr_v2.json — cache tổng hợp WN18RR
+- grid_t78_nell/pareto_cache_nell_v2.json — cache tổng hợp NELL-995
+- grid_t78_wn18rr/figure1_frontier_wn18rr.png — Figure 1 KLTN (WN18RR)
+- grid_t78_nell/figure1_frontier_nell.png — Figure 1 KLTN (NELL-995)
+- reports/artifacts/WN18RR/budget_results/pareto_cache_WN18RR_deprecated.json — cache v1 cũ (không còn hiệu lực, giữ lại cho provenance)
+
+### Bản vá `build_pareto.py` — Định dạng số f-string (2026-07-18)
+
+**Vấn đề:** `round(4)`/`round(2)`/`round(0)` trả về float khiến Markdown rơi số 0 cuối (ví dụ `0.567`, `21.6`, `117.0` thay vì `0.5670`, `21.60`, `117`).
+
+**Sửa đổi** (3 dòng tại `build_pareto.py:203–205`): thay `round()` bằng `map(lambda x: f"{x:.Nf}")` để ép chuỗi với đúng số chữ số thập phân, giữ nguyên số 0 ở đuôi khi render vào bảng Markdown.
+
+
+---
+
+## Phụ Lục T10: Bộ Công Cụ Đánh Giá Độ Bền Vững (Robustness Suite) (Bổ sung 2026-07-18)
+
+Bốn file mới được thêm vào thư mục gốc để phục vụ đánh giá tính bền vững (robustness) của PIVOT-Rerank so với baseline khi đồ thị quan sát bị khuyết cạnh.
+
+| File | Vai trò |
+|:---|:---|
+| `make_perturbed_datasets_v2.py` | Tạo dataset nhiễu bằng cách xóa cạnh ngẫu nhiên hoặc theo relation trên `facts.txt ∪ train.txt`. Khắc phục lỗi của script cũ chỉ xóa trên `train.txt`. |
+| `run_robustness_t10.sh` | Shell script chạy tự động toàn bộ thí nghiệm (4 config nhiễu × 2 phương pháp × 3 seed). Tích hợp sanity check đảm bảo không rò rỉ cache PPR cũ. |
+| `build_robustness.py` | Tổng hợp kết quả từ các log, tính `mean±std` so với baseline `clean`, xuất CSV, và vẽ Figure 2 (Robustness degradation curves). |
+| `AGENT_TASK_T10_ROBUSTNESS.md` | Tài liệu nhiệm vụ (prompt) cho Agent thực hiện Tuần 10. Chứa toàn bộ bối cảnh, quy tắc cứng và tiêu chí STOP. |
+
+> **Lưu ý:**
+> - Hai báo cáo `frontier_report_wn18rr.md` và `frontier_report_nell.md` (sinh tự động từ Tuần 7-8) đã được đổi tên thành `*_annotated.md` sau khi thêm chú giải chuyên sâu để tránh bị script `build_pareto.py` ghi đè.
+
+### Nội dung đầy đủ các tệp tin mới thêm:
+
+
+#### `make_perturbed_datasets_v2.py`
+```python
+"""
+make_perturbed_datasets_v2.py — Tuan 10 (ban sua loi thiet ke)
+==============================================================
+KHAC BAN CU: ban cu chi xoa canh trong train.txt, nhung do thi quan sat cua
+repo nay la facts.txt union train.txt (load_data.py: all_triple = facts + train,
+test_sampler xay tu do thi nay). Ban v2 xoa theo CUNG TY LE tren HOP CA HAI
+FILE, roi ghi phan song sot ve dung file goc cua no.
+
+Cau hinh nhieu:
+  del05 / del10 / del20 : xoa ngau nhien 5/10/20% trieu cua hop facts∪train
+  reldel                : xoa 50% trieu thuoc 30% relation HIEM nhat (theo
+                          tan suat tren hop facts∪train)
+
+Bat bien:
+  - entities.txt / relations.txt / valid.txt / test.txt copy NGUYEN VEN
+    (vocab khong doi -> checkpoint GNN & MLP cu van load duoc)
+  - KHONG copy bat ky cache nao (ppr_scores/, saveModel/, results/,
+    budget_results/, *.pkl) -> PPR se duoc tinh lai tren do thi nhieu
+
+Chay:
+  python3 make_perturbed_datasets_v2.py --data_path ./data/WN18RR --seed 42 \
+      --configs del05 del10 del20 reldel
+"""
+
+import argparse, os, random, shutil
+from collections import Counter
+
+CORE_COPY = ["entities.txt", "relations.txt", "valid.txt", "test.txt"]
+
+
+def load_lines(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return [ln.rstrip("\n") for ln in f if ln.strip()]
+
+
+def rel_of(line):
+    return line.split()[1]          # h r t phan tach bang whitespace
+
+
+def write_lines(path, lines):
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + ("\n" if lines else ""))
+
+
+def make_dir(src, dst):
+    if os.path.exists(dst):
+        raise SystemExit(f"LOI: {dst} da ton tai — xoa thu muc cu truoc khi tao lai "
+                         f"(tranh lan cache PPR cu).")
+    os.makedirs(dst)
+    for name in CORE_COPY:
+        src_file = os.path.join(src, name)
+        if os.path.exists(src_file):
+            shutil.copy2(src_file, os.path.join(dst, name))
+
+
+def apply_deletion(facts, train, del_idx):
+    nf = len(facts)
+    keep_f = [facts[i] for i in range(nf) if i not in del_idx]
+    keep_t = [train[j - nf] for j in range(nf, nf + len(train)) if j not in del_idx]
+    return keep_f, keep_t
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--data_path", default="./data/WN18RR")
+    ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--configs", nargs="+",
+                    default=["del05", "del10", "del20", "reldel"],
+                    choices=["del05", "del10", "del20", "reldel"])
+    ap.add_argument("--rel_bottom_frac", type=float, default=0.30)
+    ap.add_argument("--rel_del_ratio", type=float, default=0.50)
+    args = ap.parse_args()
+
+    rng = random.Random(args.seed)
+    src = args.data_path.rstrip("/")
+    base, parent = os.path.basename(src), os.path.dirname(src)
+    if not parent:
+        parent = "."
+
+    facts_path = os.path.join(src, "facts.txt")
+    train_path = os.path.join(src, "train.txt")
+    if not os.path.exists(facts_path):
+        raise SystemExit(f"LOI: {facts_path} khong ton tai.")
+    if not os.path.exists(train_path):
+        raise SystemExit(f"LOI: {train_path} khong ton tai.")
+
+    facts = load_lines(facts_path)
+    train = load_lines(train_path)
+    n_union = len(facts) + len(train)
+    print(f"[goc] facts={len(facts)}  train={len(train)}  union={n_union}")
+
+    summary = [f"seed={args.seed}",
+               f"goc: facts={len(facts)} train={len(train)} union={n_union}",
+               ""]
+
+    for cfg in args.configs:
+        dst = os.path.join(parent, f"{base}_{cfg}")
+        make_dir(src, dst)
+
+        if cfg.startswith("del"):
+            ratio = int(cfg[3:]) / 100.0
+            n_del = int(n_union * ratio)
+            del_idx = set(rng.sample(range(n_union), n_del))
+            kind = f"random {ratio:.0%} tren facts+train"
+        else:  # reldel
+            rel_count = Counter(rel_of(l) for l in facts + train)
+            rels_sorted = sorted(rel_count.items(), key=lambda x: x[1])
+            n_target = max(1, int(len(rels_sorted) * args.rel_bottom_frac))
+            targets = set(r for r, _ in rels_sorted[:n_target])
+            union = facts + train
+            tgt_idx = [i for i, l in enumerate(union) if rel_of(l) in targets]
+            n_del = int(len(tgt_idx) * args.rel_del_ratio)
+            del_idx = set(rng.sample(tgt_idx, n_del))
+            kind = (f"rel-specific: {n_target} rel hiem nhat ({len(tgt_idx)} trieu), "
+                    f"xoa {args.rel_del_ratio:.0%} trong do")
+            summary.append(f"[{cfg}] target_rels ({n_target}): "
+                           f"{sorted(targets)[:5]}{'...' if n_target>5 else ''}")
+
+        keep_f, keep_t = apply_deletion(facts, train, del_idx)
+        write_lines(os.path.join(dst, "facts.txt"), keep_f)
+        write_lines(os.path.join(dst, "train.txt"), keep_t)
+
+        # Kiem tra test.txt khong bi anh huong
+        import filecmp
+        test_ok = filecmp.cmp(os.path.join(src, "test.txt"),
+                               os.path.join(dst, "test.txt"), shallow=False)
+
+        line = (f"[{base}_{cfg}]\t{kind}"
+                f"\tdeleted={n_del} ({n_del/n_union:.1%})"
+                f"\tfacts_kept={len(keep_f)}"
+                f"\ttrain_kept={len(keep_t)}"
+                f"\tunion_kept={len(keep_f)+len(keep_t)}"
+                f"\ttest_intact={test_ok}")
+        print(line)
+        summary.append(line)
+
+    spath = os.path.join(parent, f"{base}_perturbation_summary_v2.txt")
+    write_lines(spath, summary)
+    print(f"\nXong. Summary: {spath}")
+    print("\n*** NHAC QUAN TRONG ***")
+    print("KHONG copy ppr_scores/ vao cac thu muc moi —")
+    print("PPR phai duoc tinh lai tu dau tren do thi nhieu.")
+    print("Lan chay dau tien cua moi config se LÂU (precompute ~1-2h).")
+    print("Day la hanh vi DUNG — khong kill process.")
+
+
+if __name__ == "__main__":
+    main()
+
+```
+
+#### `run_robustness_t10.sh`
+```bash
+#!/bin/bash
+# ============================================================
+# TUAN 10: ROBUSTNESS SUITE — WN18RR (FP32, test-only, resume-safe)
+#
+#   bash run_robustness_t10.sh sanity   -> 1 luot kiem tra tren del10
+#   bash run_robustness_t10.sh run      -> toan bo config x {ppr,rerank} x 3 seed
+#
+# Diem clean KHONG chay lai — tai dung tu grid_t78_wn18rr (tk0.1).
+# LUU Y: luot DAU TIEN cua moi config se kich hoat PPR precompute (lau,
+# hang chuc phut den 1-2 gio — DAY LA HANH VI DUNG, KHONG kill process).
+# Resume-safe: gian doan thi chay lai cung lenh, skip log da co [TEST].
+# ============================================================
+set -e
+PY=/home/vanba/miniconda3/envs/pivot/bin/python3
+MODE=${1:-run}
+OUT=robustness_t10
+mkdir -p $OUT
+
+# alpha* per-seed tu Tuan 9 (FP32, valid-chosen), KHONG tune lai tren do thi nhieu
+declare -A ALPHA=( [42]=0.8 [123]=0.6 [1234]=0.7 )
+
+ckpt_of() {
+    ls reports/artifacts/WN18RR/saveModel/topk_0.1_layer_8_ValMRR_*_seed${1}.pt 2>/dev/null | head -1
+}
+mlp_of() {
+    echo reports/artifacts/WN18RR/budget_results/pruning_mlp_v2_best_seed_${1}.pt
+}
+
+# Tu phat hien cac thu muc nhieu da tao (WN18RR_del* hoac WN18RR_reldel)
+CONFIGS=$(ls -d data/WN18RR_del* data/WN18RR_reldel 2>/dev/null \
+          | xargs -n1 basename 2>/dev/null || true)
+if [ -z "$CONFIGS" ]; then
+    echo "LOI: chua co thu muc nhieu — chay make_perturbed_datasets_v2.py truoc."
+    exit 2
+fi
+echo "Cac config phat hien: $CONFIGS"
+
+run_one() {  # $1=config_dirname $2=method $3=seed
+    local CFG=$1 M=$2 S=$3
+    local LOG=$OUT/rob_${CFG}_${M}_s${S}.log
+    if [ -s "$LOG" ] && grep -q "\[TEST\]" "$LOG"; then
+        echo "SKIP (da co [TEST]): $LOG"; return
+    fi
+    local CKPT; CKPT=$(ckpt_of $S)
+    if [ -z "$CKPT" ]; then
+        echo "LOI: khong tim thay checkpoint seed $S"; exit 4
+    fi
+    local EXTRA=""
+    if [ "$M" == "rerank" ]; then
+        local MLP; MLP=$(mlp_of $S)
+        if [ ! -f "$MLP" ]; then
+            echo "LOI: khong tim thay MLP checkpoint $MLP"; exit 5
+        fi
+        EXTRA="--pruning_model_path $MLP --rerank_alpha ${ALPHA[$S]}"
+    fi
+    echo "===== [$CFG] method=$M seed=$S ====="
+    $PY train_auto.py \
+        --data_path ./data/${CFG}/ \
+        --batchsize 16 \
+        --only_eval \
+        --no_amp \
+        --gpu 0 \
+        --seed $S \
+        --weight "$CKPT" \
+        --topk 0.1 \
+        --topm -1 \
+        --eval_split test \
+        $EXTRA 2>&1 | tee "$LOG"
+}
+
+# ── SANITY MODE ──
+if [ "$MODE" == "sanity" ]; then
+    CFG=$(echo $CONFIGS | tr ' ' '\n' | grep del10 | head -1)
+    [ -z "$CFG" ] && CFG=$(echo $CONFIGS | awk '{print $1}')
+    echo "=== Sanity check tren: $CFG ==="
+    echo "LUU Y: luot nay se kich hoat PPR precompute — co the lau hang chuc phut den 1-2h."
+    run_one $CFG ppr 42
+
+    echo "---- KIEM TRA SANITY ----"
+    N_PPR=$(ls data/${CFG}/ppr_scores/*.pkl 2>/dev/null | wc -l)
+    MRR=$(grep -oP '\[TEST\] MRR:\K[\-\d.]+' $OUT/rob_${CFG}_ppr_s42.log 2>/dev/null | tail -1)
+    FLAG=$(grep -oP 'use_learned_pruning=\K[A-Za-z]+' $OUT/rob_${CFG}_ppr_s42.log 2>/dev/null | head -1)
+
+    echo "ppr_scores files trong $CFG: $N_PPR (CAN = 40943 — cache MOI, khong phai copy tu WN18RR sach)"
+    echo "Test MRR seed42: $MRR (CAN < 0.5647 — thap hon clean seed42=0.5643)"
+    echo "use_learned_pruning flag: $FLAG (CAN = False)"
+
+    FAIL=0
+    [ "$N_PPR" != "40943" ] && { echo "SANITY FAIL: PPR cache sai so luong ($N_PPR != 40943)."; FAIL=1; }
+    [ -z "$MRR" ] && { echo "SANITY FAIL: khong doc duoc Test MRR."; FAIL=1; }
+    if [ "$FAIL" == "0" ]; then
+        python3 -c "
+import sys
+mrr=float('${MRR}')
+if mrr >= 0.5647:
+    print(f'SANITY FAIL: MRR {mrr:.4f} >= 0.5647 (clean) — nghi lan cache PPR sach!')
+    sys.exit(3)
+print('SANITY PASS.')
+"
+    else
+        exit 3
+    fi
+    echo "Chay tiep: bash run_robustness_t10.sh run"
+    exit 0
+fi
+
+# ── RUN MODE ──
+echo "=== Bat dau chay day du: $(echo $CONFIGS | wc -w) config x 2 method x 3 seed ==="
+for CFG in $CONFIGS; do
+    for S in 42 123 1234; do
+        for M in ppr rerank; do
+            run_one $CFG $M $S
+        done
+    done
+done
+echo ""
+echo "XONG TAT CA. Kiem tra so log:"
+ls $OUT/rob_*.log 2>/dev/null | wc -l
+echo "Tiep: python3 build_robustness.py --dir $OUT --clean_dir grid_t78_wn18rr"
+
+```
+
+#### `build_robustness.py`
+```python
+"""
+build_robustness.py — Tuan 10
+=============================
+Tong hop log robustness_t10/ + tai dung diem CLEAN tu grid_t78_wn18rr
+(ppr_s{S}_tk0.1_test.log, rerank_s{S}_tk0.1_test.log — cung dieu kien do).
+Xuat: bang degradation (mean+/-std, ddof=1), retention %, figure 2 panel,
+bao cao markdown de dan vao muc Tuan 10 cua walkthrough.
+
+Canh bao tu dong: neu bat ky o nhieu nao cao hon clean > 0.005 thi in
+"CANH BAO: nghi lan cache PPR sach" va yeu cau dung lai.
+
+Chay:
+  python3 build_robustness.py --dir robustness_t10 --clean_dir grid_t78_wn18rr
+"""
+
+import argparse, glob, os, re
+import numpy as np
+import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+RE_TEST   = re.compile(r"\[TEST\]\s+MRR:([\-\d.]+)\s+H@1:([\-\d.]+)\s+H@10:([\-\d.]+)")
+RE_ROB    = re.compile(r"rob_WN18RR_(\w+?)_(ppr|rerank)_s(\d+)\.log$")
+RE_CLEAN  = re.compile(r"(ppr|rerank)_s(\d+)_tk0\.1_test\.log$")
+ORDER     = ["clean", "del05", "del10", "del20", "reldel"]
+MLAB      = {"ppr": "PPR-only", "rerank": "PIVOT-Rerank"}
+COLORS    = {"ppr": "#7f8c8d", "rerank": "#e74c3c"}
+
+
+def parse_mrr(path):
+    """Lay Test MRR tu dong [TEST] cuoi cung trong log."""
+    ms = RE_TEST.findall(open(path, errors="ignore").read())
+    if not ms:
+        return None
+    val = float(ms[-1][0])
+    return val if val > 0 else None
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dir", default="robustness_t10")
+    ap.add_argument("--clean_dir", default="grid_t78_wn18rr")
+    args = ap.parse_args()
+
+    rows = []
+
+    # Load diem CLEAN tu grid_t78_wn18rr
+    for p in glob.glob(os.path.join(args.clean_dir, "*_tk0.1_test.log")):
+        m = RE_CLEAN.search(os.path.basename(p))
+        if m:
+            v = parse_mrr(p)
+            if v is not None:
+                rows.append({"config": "clean", "method": m.group(1),
+                             "seed": int(m.group(2)), "mrr": v, "log": p})
+
+    # Load diem NHIEU tu robustness_t10/
+    for p in glob.glob(os.path.join(args.dir, "rob_*.log")):
+        m = RE_ROB.search(os.path.basename(p))
+        if m:
+            v = parse_mrr(p)
+            if v is not None:
+                rows.append({"config": m.group(1), "method": m.group(2),
+                             "seed": int(m.group(3)), "mrr": v, "log": p})
+
+    if not rows:
+        raise SystemExit("Khong parse duoc log nao — kiem tra duong dan.")
+
+    df = pd.DataFrame(rows)
+    df.to_csv(os.path.join(args.dir, "robustness_points.csv"), index=False)
+
+    # Aggregate mean +/- std (ddof=1)
+    agg = df.groupby(["config", "method"]).agg(
+        mrr_mean=("mrr", "mean"),
+        mrr_std=("mrr", lambda x: float(x.std(ddof=1))),
+        n_seeds=("seed", "nunique")
+    ).reset_index()
+
+    # Tinh delta va retention
+    clean_vals = {m: agg[(agg.config == "clean") & (agg.method == m)]["mrr_mean"].iloc[0]
+                  for m in agg.method.unique()}
+    agg["delta_vs_clean"] = agg.apply(lambda r: r.mrr_mean - clean_vals[r.method], axis=1)
+    agg["retention_pct"]  = agg.apply(lambda r: 100.0 * r.mrr_mean / clean_vals[r.method], axis=1)
+    agg.to_csv(os.path.join(args.dir, "robustness_agg.csv"), index=False)
+
+    print("\n=== robustness_agg ===")
+    print(agg[["config","method","mrr_mean","mrr_std","delta_vs_clean","retention_pct"]].round(4).to_string(index=False))
+
+    # ── Canh bao lan cache ──
+    warn = False
+    for _, r in agg.iterrows():
+        if r.config != "clean" and r.mrr_mean > clean_vals[r.method] + 0.005:
+            print(f"\n!! CANH BAO: {r.config}/{r.method} CAO hon clean "
+                  f"({r.mrr_mean:.4f} vs {clean_vals[r.method]:.4f}) — "
+                  f"NGHI LAN CACHE PPR SACH. Kiem tra ppr_scores/ trong thu muc "
+                  f"WN18RR_{r.config} co phai moi hay khong.")
+            warn = True
+    if warn:
+        raise SystemExit("STOP: co canh bao lan cache — kiem tra truoc khi chap nhan so lieu.")
+
+    # ── Figure ──
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.4), dpi=150,
+                              gridspec_kw={"width_ratios": [2.2, 1]})
+
+    # Panel A: random deletion curve
+    rand_configs = {"clean": 0, "del05": 5, "del10": 10, "del20": 20}
+    rand = agg[agg.config.isin(rand_configs)].copy()
+    rand["x"] = rand.config.map(rand_configs)
+    for m in sorted(rand.method.unique()):
+        A = rand[rand.method == m].sort_values("x")
+        axes[0].errorbar(A.x, A.mrr_mean, yerr=A.mrr_std,
+                         marker="o", color=COLORS.get(m, "k"),
+                         label=MLAB.get(m, m), capsize=3, ms=6, lw=1.8)
+        for _, row in A.iterrows():
+            axes[0].annotate(f"{row.retention_pct:.1f}%",
+                             (row.x, row.mrr_mean),
+                             textcoords="offset points", xytext=(4, 5), fontsize=7)
+    axes[0].set_xlabel("Ty le xoa canh ngau nhien tren facts∪train (%)", fontsize=9)
+    axes[0].set_ylabel("Test MRR", fontsize=9)
+    axes[0].set_xticks([0, 5, 10, 20])
+    axes[0].grid(alpha=0.3)
+    axes[0].legend(fontsize=8)
+    axes[0].set_title("(a) Random edge deletion", fontsize=10)
+
+    # Panel B: reldel bar chart
+    rel = agg[agg.config.isin(["clean", "reldel"])]
+    if (rel.config == "reldel").any():
+        xs = {"ppr": -0.22, "rerank": 0.22}
+        w = 0.38
+        for m in sorted(rel.method.unique()):
+            for i, cfg in enumerate(["clean", "reldel"]):
+                r = rel[(rel.method == m) & (rel.config == cfg)]
+                if r.empty:
+                    continue
+                r = r.iloc[0]
+                bar = axes[1].bar(i + xs[m], r.mrr_mean, width=w,
+                                  yerr=r.mrr_std, color=COLORS.get(m, "k"),
+                                  alpha=0.5 if cfg == "clean" else 0.9,
+                                  capsize=3, label=MLAB.get(m, m) if i == 0 else "_")
+                axes[1].text(i + xs[m], r.mrr_mean + r.mrr_std + 0.001,
+                             f"{r.mrr_mean:.4f}", ha="center", fontsize=7)
+        axes[1].set_xticks([0, 1])
+        axes[1].set_xticklabels(["clean", "reldel"])
+        axes[1].set_ylabel("Test MRR", fontsize=9)
+        axes[1].grid(alpha=0.3, axis="y")
+        lo = max(0, rel.mrr_mean.min() - 0.015)
+        axes[1].set_ylim(lo, rel.mrr_mean.max() + 0.02)
+        axes[1].set_title("(b) Relation-specific deletion", fontsize=10)
+        axes[1].legend(fontsize=8, loc="lower right")
+    else:
+        axes[1].text(0.5, 0.5, "reldel chua co\n(chua chay)", ha="center",
+                     va="center", transform=axes[1].transAxes, fontsize=10)
+        axes[1].set_title("(b) Relation-specific deletion", fontsize=10)
+
+    fig.suptitle("Tuan 10 — Robustness: PPR-only vs PIVOT-Rerank (WN18RR, FP32, θ=10%)",
+                 fontsize=11)
+    fig.tight_layout()
+    out_fig = os.path.join(args.dir, "figure_robustness_wn18rr.png")
+    fig.savefig(out_fig, bbox_inches="tight")
+    print(f"Da luu figure: {out_fig}")
+
+    # ── Bao cao markdown ──
+    lines = [
+        "## Bảng Degradation — Robustness Suite WN18RR (mean±std, 3 seed, FP32, θ=10%)\n",
+        "| Config | Phương pháp | Test MRR | Δ vs clean | Retention % |",
+        "|:---:|:---:|:---:|:---:|:---:|"
+    ]
+    for cfg in ORDER:
+        for m in ["ppr", "rerank"]:
+            r = agg[(agg.config == cfg) & (agg.method == m)]
+            if r.empty:
+                continue
+            r = r.iloc[0]
+            lines.append(
+                f"| {cfg} | {MLAB.get(m, m)} "
+                f"| {r.mrr_mean:.4f} ± {r.mrr_std:.4f} "
+                f"| {r.delta_vs_clean:+.4f} "
+                f"| {r.retention_pct:.1f}% |"
+            )
+
+    lines += [
+        "\n## Khoảng cách Rerank − PPR theo mức nhiễu\n",
+        "| Config | Δ(Rerank − PPR) | Nhận xét |",
+        "|:---:|:---:|:---|"
+    ]
+    for cfg in ORDER:
+        a = agg[(agg.config == cfg) & (agg.method == "rerank")]
+        b = agg[(agg.config == cfg) & (agg.method == "ppr")]
+        if a.empty or b.empty:
+            continue
+        diff = a.mrr_mean.iloc[0] - b.mrr_mean.iloc[0]
+        clean_diff = (agg[(agg.config=="clean") & (agg.method=="rerank")]["mrr_mean"].iloc[0]
+                      - agg[(agg.config=="clean") & (agg.method=="ppr")]["mrr_mean"].iloc[0])
+        trend = "thu hep" if diff < clean_diff - 0.001 else (
+                "giu vung" if abs(diff - clean_diff) <= 0.001 else "mo rong")
+        lines.append(f"| {cfg} | {diff:+.4f} | Gap {trend} so voi clean ({clean_diff:+.4f}) |")
+
+    rpath = os.path.join(args.dir, "robustness_report_wn18rr.md")
+    open(rpath, "w", encoding="utf-8").write("\n".join(lines) + "\n")
+    print(f"Da luu bao cao: {rpath}")
+
+    print(f"\n=== CROSS-CHECK ===")
+    p_clean = agg[(agg.config=="clean") & (agg.method=="ppr")]
+    r_clean = agg[(agg.config=="clean") & (agg.method=="rerank")]
+    if not p_clean.empty:
+        pv = p_clean.iloc[0]
+        print(f"clean/ppr:    {pv.mrr_mean:.4f} +/- {pv.mrr_std:.4f}  (can khop 0.5638 +/- 0.0017)")
+    if not r_clean.empty:
+        rv = r_clean.iloc[0]
+        print(f"clean/rerank: {rv.mrr_mean:.4f} +/- {rv.mrr_std:.4f}  (can khop 0.5685 +/- 0.0021)")
+
+
+if __name__ == "__main__":
+    main()
+
+```
+
+#### `AGENT_TASK_T10_ROBUSTNESS.md`
+```markdown
+# NHIỆM VỤ AGENT — TUẦN 10: ROBUSTNESS SUITE (WN18RR)
+
+> **Câu lệnh khởi động:** *"Đọc `.agents/AGENTS.md`, walkthrough (§0, §1, §7, §8)
+> và toàn bộ file này, rồi thực thi Phase 0 → 5. Tuân thủ QUY TẮC CỨNG và
+> DỪNG đúng điều kiện STOP."*
+
+---
+
+## BỐI CẢNH
+
+Câu hỏi khoa học: *khi KG quan sát bị khuyết cạnh, cơ chế nào chống chịu tốt
+hơn — PPR thuần hay PIVOT-Rerank?* Giả thuyết: feature thống kê toàn cục của
+MLP (`tail_freq_q`, `rel_match`) ít nhạy với mất cạnh cục bộ hơn PPR (vốn phụ
+thuộc đường đi), nên degradation curve của Rerank thoải hơn; khác biệt kỳ vọng
+rõ nhất ở **reldel** (đánh vào relation hiếm — vùng PPR mù).
+
+**CẢ BA KỊCH BẢN ĐỀU LÀ KẾT QUẢ HỢP LỆ** — ghi nhận trung thực, không "cứu"
+số liệu:
+
+- **(a)** Rerank degrade chậm hơn → giả thuyết được ủng hộ
+- **(b)** Hai đường song song → cải thiện bền vững dưới nhiễu
+- **(c)** Rerank degrade nhanh hơn → finding về distribution shift của learned component
+
+Không kịch bản nào là "thất bại".
+
+**Thiết kế:** test-time perturbation, không retrain — xóa cạnh trong đồ thị quan
+sát (facts∪train), giữ nguyên GNN/MLP checkpoint train trên đồ thị sạch; α*
+giữ per-seed từ Tuần 9 (seed42→0.8, seed123→0.6, seed1234→0.7), KHÔNG tune lại
+trên đồ thị nhiễu. Điểm clean tái dùng từ grid θ=10% — không chạy lại.
+
+**Công cụ** (đặt ở gốc repo):
+- `make_perturbed_datasets_v2.py` — tạo dataset nhiễu (bản v2, sửa lỗi thiết kế)
+- `run_robustness_t10.sh` — điều phối chạy eval
+- `build_robustness.py` — tổng hợp và vẽ biểu đồ
+- File này (`AGENT_TASK_T10_ROBUSTNESS.md`) — briefing này
+
+---
+
+## QUY TẮC CỨNG
+
+1. FP32 (`--no_amp`), test-only (`--eval_split test`) — script đã cài sẵn.
+2. Rerank = CHỈ `--pruning_model_path` + `--rerank_alpha`; **tuyệt đối không** `--use_learned_pruning`.
+3. **PPR cache phải MỚI trên từng đồ thị nhiễu.** Không copy/symlink `ppr_scores/` từ WN18RR sạch vào thư mục nhiễu dưới bất kỳ hình thức nào. Dấu hiệu nhiễm: MRR trên đồ thị nhiễu ≥ clean + 0.005.
+4. Không bịa số; mọi số vào báo cáo phải nằm trong `robustness_agg.csv`.
+5. Không sửa code ngoài **một patch được phê duyệt trước** ở Phase 0.3.
+6. Script robustness bản CŨ (`make_perturbed_datasets.py`, `run_robustness_suite.sh`) — đánh dấu deprecated ngay Phase 0.3, KHÔNG dùng.
+
+---
+
+## ĐIỀU KIỆN STOP
+
+- Đĩa trống < 50GB (Phase 0.1).
+- Sanity FAIL (Phase 1).
+- Cảnh báo "CANH BAO: nghi lan cache" từ `build_robustness.py`.
+- Bất kỳ lượt nào crash quá 1 lần retry; hoặc OOM.
+
+---
+
+## PHASE 0 — Chuẩn bị (~20 phút)
+
+### 0.1 Cổng dung lượng đĩa
+
+Mỗi config nhiễu tốn ~19GB PPR cache:
+
+```bash
+df -h --output=avail /home | tail -1
+```
+
+| Dung lượng trống | Hành động |
+|:---|:---|
+| **≥ 100 GB** | Chạy đủ 4 config: `del05 del10 del20 reldel` |
+| **50–100 GB** | Chạy 2 config: `del10 reldel` (ghi rõ lý do vào báo cáo; 2 điểm nhiễu vẫn đạt deliverable) |
+| **< 50 GB** | **STOP** — báo người dùng dọn đĩa |
+
+### 0.2 Tạo dataset nhiễu
+
+Thay danh sách config theo kết quả 0.1:
+
+```bash
+python3 make_perturbed_datasets_v2.py --data_path ./data/WN18RR --seed 42 \
+    --configs del05 del10 del20 reldel
+```
+
+Kiểm tra sau khi chạy:
+1. File `data/WN18RR_perturbation_summary_v2.txt` có số `deleted` khớp tỷ lệ danh nghĩa (±1 triple)
+2. `diff data/WN18RR/test.txt data/WN18RR_del10/test.txt` → **rỗng**
+3. `ls data/WN18RR_del10/ppr_scores/ 2>/dev/null` → **không tồn tại**
+
+### 0.3 Patch 1 dòng được phê duyệt trước
+
+`train_auto.py` dispatch params theo tên dataset và sẽ `exit()` với tên thư mục `WN18RR_del10`. Sửa đúng **1 dòng**:
+
+```diff
+-    if dataset == 'WN18RR':
++    if dataset.startswith('WN18RR'):
+```
+
+Ghi diff này vào `changes_summary.md` (mục Tuần 10) **ngay sau khi sửa**.
+
+Đồng thời thêm comment deprecated vào đầu các script cũ nếu còn tồn tại:
+
+```python
+# DEPRECATED (Tuan 10-07-2026): su dung make_perturbed_datasets_v2.py thay the.
+# Loi thiet ke: ban nay chi xoa trong train.txt; do thi quan sat = facts UNION train.
+```
+
+---
+
+## PHASE 1 — Sanity (~1-2h, lần đầu kích hoạt PPR precompute)
+
+```bash
+bash run_robustness_t10.sh sanity
+```
+
+> ⚠️ **LƯU Ý:** Lượt sanity kích hoạt PPR precompute cho `del10` (~40,943 file pkl, tốn hàng chục phút đến ~1-2h). **Đây là hành vi đúng — không kill process.**
+
+**PASS** khi script in `SANITY PASS`:
+- `ppr_scores/` trong thư mục nhiễu đủ **40,943 file pkl**
+- Test MRR seed42 < **0.5647** (thấp hơn clean seed42=0.5643 tại θ=10%)
+- `use_learned_pruning=False`
+
+**FAIL → STOP ngay.**
+
+---
+
+## PHASE 2 — Chạy đủ (nền, có thể chạy qua đêm)
+
+```bash
+nohup bash run_robustness_t10.sh run > rob_master.log 2>&1 &
+echo "PID: $!"
+```
+
+Khối lượng: `N_config × 2 phương pháp × 3 seed` lượt eval (~3 phút/lượt sau khi
+PPR của config đó đã có; lượt đầu mỗi config gánh PPR precompute).
+
+Resume-safe: gián đoạn thì chạy lại đúng lệnh, script skip log đã có `[TEST]`.
+
+Đếm log khi xong: `ls robustness_t10/rob_*.log | wc -l` → cần = `N_config × 6`.
+
+---
+
+## PHASE 3 — Tổng hợp & Cross-check (~10 phút)
+
+```bash
+python3 build_robustness.py --dir robustness_t10 --clean_dir grid_t78_wn18rr
+```
+
+**Cross-check bắt buộc:**
+
+1. Hàng `clean` trong `robustness_agg.csv`:
+   - `ppr ≈ 0.5638 ± 0.0017` (đọc từ chính log grid — phải khớp tuyệt đối)
+   - `rerank ≈ 0.5685 ± 0.0021` (idem)
+2. Không có cảnh báo `"nghi lan cache"` từ script.
+3. Tính đơn điệu mềm: `MRR(del05) ≥ MRR(del10) ≥ MRR(del20)` cho từng phương pháp (cho phép vi phạm ≤ 1 bậc trong phạm vi 1 std — ghi nhận nếu có).
+
+**Vi phạm mục 1 hoặc 2 → STOP.**
+
+---
+
+## PHASE 4 — Cập nhật tài liệu
+
+### 4.1 Walkthrough — mục mới "Tuần 10 — Robustness Suite ✅"
+
+Đặt sau mục Tuần 9, trước "So Sánh Tổng Thể". Gồm:
+
+- **Thiết kế** với **3 ghi chú protocol bắt buộc**:
+  1. *Filtered-ranking dùng filter của dataset nhiễu* (triple bị xóa không còn bị filter) — cả hai phương pháp chịu cùng protocol nên so sánh công bằng, cùng cách làm với Table 16 paper gốc.
+  2. *Feature MLP tính trên đồ thị nhiễu* (đúng thiết kế test-time robustness).
+  3. *Nếu chỉ chạy 2 config:* ghi rõ lý do dung lượng đĩa.
+- **Bảng degradation** + **bảng khoảng cách Rerank−PPR** copy từ `robustness_t10/robustness_report_wn18rr.md`.
+- **Nhúng** `robustness_t10/figure_robustness_wn18rr.png`.
+- **Đoạn nhận xét 5–8 câu** CHỈ dựa trên `robustness_agg.csv` — nêu rõ kịch bản (a)/(b)/(c) và số liệu ô `reldel`.
+
+### 4.2 §0 và §3 walkthrough
+
+- **§0 bảng trạng thái:** Tuần 10 ⬜ → ✅
+- **§3:** thêm dòng `robustness_t10/` (N log + agg csv + figure) và `data/WN18RR_perturbation_summary_v2.txt`
+
+### 4.3 changes_summary.md — mục Tuần 10
+
+- 3 file công cụ mới
+- Patch 1 dòng `train_auto.py` (diff đầy đủ)
+- Danh sách artifact sinh ra
+- Ghi chú: script robustness bản CŨ đánh dấu deprecated
+
+---
+
+## PHASE 5 — Báo cáo kết thúc (≤ 20 dòng)
+
+Báo cáo phải trả lời đủ:
+
+1. Số config đã chạy + tổng thời gian (tách riêng PPR precompute vs eval)
+2. Bảng cross-check pass/fail
+3. Kết quả kịch bản (a)/(b)/(c), số liệu: Δ(Rerank − PPR) tại clean, del20, reldel
+4. Bất thường
+5. File đã cập nhật
+6. Dung lượng đĩa đã dùng thêm + câu hỏi: *"Có xóa `data/WN18RR_del*/ppr_scores` sau khi chốt số không? (cache ~19GB/config, log là đủ truy vết)"*
+
+```
+
+### Bản vá 	rain_auto.py (Phase 0.3)
+Sửa lỗi nhận diện tham số cho các tập dữ liệu nhiễu WN18RR_del*.
+
+`diff
+-    if dataset == \'WN18RR\':
++    if dataset.startswith(\'WN18RR\'):
+`
+- **walkthrough_ablation_draft.md**: Viết lại hoàn toàn dựa trên insight mới về sự phân rã Tầng 1 (Ngữ nghĩa gánh Candidate Selection) và Tầng 2 (Cấu trúc gánh Rerank MRR). Phán quyết rel_match có thể loại bỏ. Cập nhật các limitation và errata.

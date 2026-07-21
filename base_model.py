@@ -23,11 +23,17 @@ class BaseModel(object):
         self.loader = loader
         self.model = GNN_auto(args, loader)
         self.model.cuda()
+        if hasattr(args, 'compile') and args.compile:
+            print("==> Setting float32 matmul precision to 'high'...")
+            torch.set_float32_matmul_precision('high')
+            print("==> Compiling GNN model with torch.compile...")
+            self.model = torch.compile(self.model)
+
         self.n_ent = loader.n_ent
         self.n_samp_ent = args.n_samp_ent
         self.n_rel = loader.n_rel
         self.train_sampler, self.test_sampler = samplers
-        prefetch = args.cpu if args.cpu > 0 else None
+        prefetch = 2 if args.cpu > 0 else None
         self.trainLoader = DataLoader(loader, batch_size=args.n_batch, num_workers=args.cpu, collate_fn=loader.collate_fn, shuffle=False, prefetch_factor=prefetch, pin_memory=False, worker_init_fn=worker_init_fn)
         self.valLoader = DataLoader(val_loader, batch_size=args.n_tbatch, num_workers=args.cpu, collate_fn=val_loader.collate_fn, shuffle=False, prefetch_factor=prefetch, pin_memory=False, worker_init_fn=worker_init_fn)
         self.testLoader = DataLoader(test_loader, batch_size=args.n_tbatch, num_workers=args.cpu, collate_fn=test_loader.collate_fn, shuffle=False, prefetch_factor=prefetch, pin_memory=False, worker_init_fn=worker_init_fn)
@@ -49,7 +55,7 @@ class BaseModel(object):
             torch.cuda.reset_peak_memory_stats()
 
     def _post_hoc_rerank(self, scores, subs, rels, subgraph_data):
-        if hasattr(self.args, 'rerank_alpha') and self.args.rerank_alpha > 0:
+        if hasattr(self.args, 'rerank_alpha') and self.args.rerank_alpha >= 0.0 and hasattr(self.args, 'use_learned_pruning') and self.args.use_learned_pruning:
             batch_idxs_cpu = subgraph_data[0].cpu()
             abs_idxs_cpu = subgraph_data[1].cpu()
             rels_cpu = rels.cpu()
@@ -65,9 +71,13 @@ class BaseModel(object):
                 q_rel = int(rels_cpu[i])
                 q_sub = int(subs_cpu[i])
                 
-                ppr_scores_i = torch.tensor(
-                    self.test_sampler.all_ppr_scores[q_sub, entity_ids.numpy()]
-                )
+                if hasattr(self.test_sampler, 'all_ppr_scores') and self.test_sampler.all_ppr_scores is not None:
+                    ppr_scores_i = torch.tensor(
+                        self.test_sampler.all_ppr_scores[q_sub, entity_ids.numpy()]
+                    )
+                else:
+                    ppr_dict = self.test_sampler.getPPRscores(q_sub)
+                    ppr_scores_i = torch.tensor([ppr_dict.get(int(eid), 0.0) for eid in entity_ids])
                 feats = self.test_sampler.build_features_for_inference(
                     q_sub, q_rel, entity_ids, ppr_scores_i
                 )
@@ -80,7 +90,16 @@ class BaseModel(object):
                 mlp_scores_full[i, entity_ids] = mlp_s
             
             alpha = self.args.rerank_alpha
-            scores = (1 - alpha) * scores + alpha * mlp_scores_full.numpy()
+            scores_blended = (1 - alpha) * scores + alpha * mlp_scores_full.numpy()
+            
+            if hasattr(self.args, 'dump_scores') and self.args.dump_scores != '':
+                if not hasattr(self, 'dump_gnn_list'):
+                    self.dump_gnn_list = []
+                    self.dump_mlp_list = []
+                self.dump_gnn_list.append(scores.copy())
+                self.dump_mlp_list.append(mlp_scores_full.numpy())
+            
+            scores = scores_blended
         return scores
 
     def saveModelToFiles(self, args, best_metric, deleteLastFile=True):
@@ -101,7 +120,10 @@ class BaseModel(object):
         print(f'Load weight from {filePath}')
         assert os.path.exists(filePath)
         checkpoint = torch.load(filePath, map_location=torch.device(f'cuda:{self.args.gpu}'))
-        self.model.load_state_dict(checkpoint['model_state_dict'])
+        if hasattr(self.model, '_orig_mod'):
+            self.model._orig_mod.load_state_dict(checkpoint['model_state_dict'])
+        else:
+            self.model.load_state_dict(checkpoint['model_state_dict'])
         # re-build optimizter
         self.optimizer = Adam(self.model.parameters(), lr=self.args.lr, weight_decay=self.args.lamb)
 
@@ -152,10 +174,6 @@ class BaseModel(object):
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
 
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            time.sleep(0.05)
-
             # cover tail entity or not
             reach_tails = (pos_scores == 0).detach().int().reshape(-1).cpu().tolist()
             reach_tails_list += reach_tails
@@ -183,8 +201,10 @@ class BaseModel(object):
         return valid_mrr, f'[TRAIN] latency_ms:{train_latency_ms:.2f} peak_gpu_mem_mb:{train_peak_mem_mb:.2f}\t' + out_str
     
     @torch.no_grad()
-    def evaluate(self, eval_val=True, eval_test=True, verbose=False, rank_CR=False, mean_rank=False):
+    def evaluate(self, eval_val=True, eval_test=True, verbose=False, rank_CR=False, mean_rank=False, return_ranks=False):
         ranking = []
+        val_ranking_ret = []
+        test_ranking_ret = []
         self.model.eval()
         self._reset_cuda_peak_memory()
         if torch.cuda.is_available():
@@ -232,6 +252,16 @@ class BaseModel(object):
                 filters = np.array(filters)
                 ranks = cal_ranks(scores, objs, filters)
                 ranking += ranks
+                if return_ranks:
+                    val_ranking_ret += ranks
+                    
+                if hasattr(self.args, 'dump_scores') and self.args.dump_scores != '':
+                    if not hasattr(self, 'dump_objs_list'):
+                        self.dump_objs_list = []
+                        self.dump_filters_list = []
+                    self.dump_objs_list.append(objs)
+                    filt_idx = [np.where(f == 1)[0] for f in filters]
+                    self.dump_filters_list.extend(filt_idx)
                 
                 if mean_rank: 
                     mean_ranks = cal_ranks_mean(scores, objs, filters)
@@ -302,6 +332,17 @@ class BaseModel(object):
                 filters = np.array(filters)
                 ranks = cal_ranks(scores, objs, filters)
                 ranking += ranks
+                if return_ranks:
+                    test_ranking_ret += ranks
+                    
+                if hasattr(self.args, 'dump_scores') and self.args.dump_scores != '':
+                    if not hasattr(self, 'dump_objs_list'):
+                        self.dump_objs_list = []
+                        self.dump_filters_list = []
+                    self.dump_objs_list.append(objs)
+                    # Convert one-hot filters back to list of indices to save space
+                    filt_idx = [np.where(f == 1)[0] for f in filters]
+                    self.dump_filters_list.extend(filt_idx)
 
                 if mean_rank: 
                     mean_ranks = cal_ranks_mean(scores, objs, filters)
@@ -338,4 +379,15 @@ class BaseModel(object):
         eval_latency_ms = (time.perf_counter() - i_time) * 1000.0
         eval_peak_mem_mb = self._cuda_peak_memory_mb()
         out_str = '[VALID] MRR:%.6f H@1:%.6f H@10:%.6f\t [TEST] MRR:%.6f H@1:%.6f H@10:%.6f \t[TIME] train:%.4f inference:%.4f \t[LATENCY] eval_total_ms:%.2f data_prep_ms:%.2f forward_ms:%.2f ranking_ms:%.2f \t[PEAK_GPU_MEM] %.2fMB\n'%(v_mrr, v_h1, v_h10, t_mrr, t_h1, t_h10, self.train_time, eval_latency_ms / 1000.0, eval_latency_ms, data_prep_ms, forward_ms, ranking_ms, eval_peak_mem_mb)
+        if hasattr(self.args, 'dump_scores') and self.args.dump_scores != '' and hasattr(self, 'dump_gnn_list'):
+            gnn_all = np.vstack(self.dump_gnn_list)
+            mlp_all = np.vstack(self.dump_mlp_list)
+            objs_all = np.concatenate(self.dump_objs_list)
+            filters_all = np.array(self.dump_filters_list, dtype=object)
+            os.makedirs(os.path.dirname(self.args.dump_scores), exist_ok=True)
+            np.savez(self.args.dump_scores, gnn=gnn_all, mlp=mlp_all, objs=objs_all, filters=filters_all)
+            print(f"==> Dumped GNN/MLP scores to {self.args.dump_scores}")
+
+        if return_ranks:
+            return v_mrr, out_str, val_ranking_ret, test_ranking_ret
         return v_mrr, out_str

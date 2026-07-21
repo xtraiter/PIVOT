@@ -1,0 +1,8 @@
+seed=42
+goc: facts=65130 train=21705 union=86835
+
+[WN18RR_del05]	random 5% tren facts+train	deleted=4341 (5.0%)	facts_kept=61881	train_kept=20613	union_kept=82494	test_intact=True
+[WN18RR_del10]	random 10% tren facts+train	deleted=8683 (10.0%)	facts_kept=58638	train_kept=19514	union_kept=78152	test_intact=True
+[WN18RR_del20]	random 20% tren facts+train	deleted=17367 (20.0%)	facts_kept=52090	train_kept=17378	union_kept=69468	test_intact=True
+[reldel] target_rels (3): ['_member_of_domain_region', '_member_of_domain_usage', '_similar_to']
+[WN18RR_reldel]	rel-specific: 3 rel hiem nhat (1632 trieu), xoa 50% trong do	deleted=816 (0.9%)	facts_kept=64526	train_kept=21493	union_kept=86019	test_intact=True

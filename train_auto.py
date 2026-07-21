@@ -9,6 +9,8 @@ from utils import *
 from PPR_sampler import pprSampler
 
 def git_push_update(message="Auto-commit checkpoints and logs"):
+    # Disabled to prevent process hanging when git prompt asks for credentials
+    return
     import subprocess
     try:
         # Check if git is initialized and has a remote
@@ -55,8 +57,13 @@ parser.add_argument('--only_eval', action='store_true')
 parser.add_argument('--not_shuffle_train', action='store_true')
 parser.add_argument('--use_learned_pruning', action='store_true')
 parser.add_argument('--pruning_model_path', type=str, default='')
+parser.add_argument('--mlp_ablation_mode', type=str, default='v4', help='ablation mode for mlp features (v1, v2, v3, v4, l1, l2, l3)')
 parser.add_argument('--rerank_alpha', type=float, default=0.0)
+parser.add_argument('--dump_scores', type=str, default='')
 parser.add_argument('--no_amp', action='store_true')
+parser.add_argument('--compile', action='store_true', help='Compile model using torch.compile')
+parser.add_argument('--eval_split', type=str, default='all', choices=['all', 'valid', 'test'], help='Which split to evaluate during only_eval')
+parser.add_argument('--dump_ranks', type=str, default='', help='duong dan file .npy de luu rank tung query')
 args = parser.parse_args()
 
 class Options(object):
@@ -106,7 +113,7 @@ if __name__ == '__main__':
     test_homo_edges = list(set([(h,t) for (h,r,t) in test_data]))
     test_data = np.concatenate([np.array(test_data), loader.idd_data], 0)
     test_sampler = pprSampler(loader.n_ent, loader.n_rel, args.n_samp_ent, args.n_samp_edge,
-        test_homo_edges, test_data, args.data_path, split='test', args=args)
+        test_homo_edges, test_data, args.data_path, split='test', args=args, mlp_ablation_mode=args.mlp_ablation_mode)
 
     del test_homo_edges
         
@@ -114,7 +121,7 @@ if __name__ == '__main__':
     fact_homo_edges = list(set([(h,t) for (h,r,t) in loader.fact_data]))
     fact_data = np.concatenate([np.array(loader.fact_data), loader.idd_data], 0)
     train_sampler = pprSampler(loader.n_ent, loader.n_rel, args.n_samp_ent, args.n_samp_edge,
-        fact_homo_edges, fact_data, args.data_path, split='train', args=args)
+        fact_homo_edges, fact_data, args.data_path, split='train', args=args, mlp_ablation_mode=args.mlp_ablation_mode)
         
     del fact_homo_edges
         
@@ -158,7 +165,18 @@ if __name__ == '__main__':
             
         # only do evaluation, and then exit
         if args.only_eval:
-            valid_mrr, out_str = model.evaluate(verbose=True, rank_CR=False)
+            eval_val = (args.eval_split in ['all', 'valid'])
+            eval_test = (args.eval_split in ['all', 'test'])
+            if args.dump_ranks != '':
+                valid_mrr, out_str, val_ranks, test_ranks = model.evaluate(verbose=True, rank_CR=False, eval_val=eval_val, eval_test=eval_test, return_ranks=True)
+                ranks_to_save = test_ranks if eval_test else val_ranks
+                if len(ranks_to_save) == 0 and eval_val:
+                    ranks_to_save = val_ranks
+                os.makedirs(os.path.dirname(args.dump_ranks), exist_ok=True)
+                np.save(args.dump_ranks, np.array(ranks_to_save))
+                print(f"==> Dumped query ranks to {args.dump_ranks} (length: {len(ranks_to_save)})")
+            else:
+                valid_mrr, out_str = model.evaluate(verbose=True, rank_CR=False, eval_val=eval_val, eval_test=eval_test)
             print(out_str)
             with open(opts.perf_file, 'a+') as f:
                 f.write(out_str)
@@ -195,7 +213,7 @@ if __name__ == '__main__':
         return best_mrr
     
     # NOTE: best config
-    if dataset == 'WN18RR':
+    if dataset.startswith('WN18RR'):
         # [VALID] MRR:0.5690 H@1:0.5170 H@10:0.6663        [TEST] MRR:0.5678 H@1:0.5140 H@10:0.6662
         params = {'lr': 0.0001, 'hidden_dim': 256, 'attn_dim': 8, 'n_layer': 8, 'act': 'idd', 'initializer': 'relation', 'concatHidden': False, 'shortcut': True, 'readout': 'multiply', 'decay_rate': 0.8662400068095666, 'lamb': 0.00039154537550520227, 'dropout': 0.004323645605227445}
     elif dataset == 'nell':
@@ -204,6 +222,10 @@ if __name__ == '__main__':
     elif dataset == 'YAGO':
         # [VALID] MRR:0.6117 H@1:0.5477 H@10:0.7273        [TEST] MRR:0.6064 H@1:0.5403 H@10:0.7218 
         params = {'lr': 0.001, 'hidden_dim': 64, 'attn_dim': 2, 'n_layer': 8, 'act': 'relu', 'initializer': 'binary', 'concatHidden': True, 'shortcut': False, 'readout': 'linear', 'decay_rate': 0.9429713470775948, 'lamb': 0.000946516892415447, 'dropout': 0.19456805575101324}
+    elif dataset == 'biokg':
+        # OGBL-BIOKG: ~94k entities, 51 relations, ~4.76M train triples
+        # Conservative params (large dataset, 16GB VRAM, AMP enabled)
+        params = {'lr': 0.001, 'hidden_dim': 64, 'attn_dim': 4, 'n_layer': 6, 'act': 'relu', 'initializer': 'binary', 'concatHidden': False, 'shortcut': False, 'readout': 'linear', 'decay_rate': 0.9429, 'lamb': 0.0009, 'dropout': 0.1}
     else:
         exit()
         

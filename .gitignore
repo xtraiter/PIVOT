@@ -16,3 +16,8 @@ Thumbs.db
 # Checkpoint mô hình này rất nhẹ (~4MB) nên đẩy lên GitHub hoàn toàn khả thi và nhanh chóng.
 !results/
 !**/saveModel/
+*.npz
+
+# Ignore large cache arrays and tensors
+*.npz
+reports/artifacts/**/budget_results/*.pt
