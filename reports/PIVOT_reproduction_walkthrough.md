@@ -139,6 +139,66 @@ Paper gốc sử dụng GPU A100 (80GB). Kết quả tái lập chạy trên RTX
 2. **AMP Mixed Precision (FP16):** GradScaler FP16 tạo rounding errors nhỏ khi scale gradient, đặc biệt tích lũy qua 8 lớp GRU.
 3. Kết quả tái lập nằm **trong khoảng tin cậy** (mean ± 2σ của paper gốc — theo chuẩn khoa học, sai số < 0.5% là tái lập thành công).
 
+### Reproduce Table 1 (Main Accuracy) — NELL-995
+
+Chạy 3 seed độc lập ({42, 123, 1234}) cho bộ dữ liệu NELL-995 với PPR baseline thuần túy (không có component PIVOT).
+
+**Lệnh chạy:**
+```bash
+python3 train_auto.py \
+    --data_path ./data/nell/ \
+    --seed <SEED> \
+    --topk 0.1 \
+    --gpu 0 \
+    --fact_ratio 0.95 \
+    --epoch 200 \
+    --batchsize 8 \
+    --cpu 32
+```
+
+**Kết quả chi tiết từng seed (tại epoch tốt nhất — Valid MRR cao nhất):**
+
+| Seed | Best Epoch | Valid MRR | Valid H@1 | Valid H@10 | **Test MRR** | **Test H@1** | **Test H@10** | Lat/query | Peak GPU (eval) | GPU-hours |
+|:----:|:----------:|:---------:|:---------:|:----------:|:------------:|:------------:|:-------------:|:---------:|:---------------:|:---------:|
+| 42   | 49 / 60 | 0.4880 | 41.80% | 60.68% | **0.5330** | **46.81%** | **63.91%** | 32.85 ms | 2291.12 MB | 16.50 |
+| 123  | 55 / 75 | 0.4994 | 42.63% | 62.71% | **0.5248** | **45.87%** | **62.67%** | 33.18 ms | 2290.85 MB | 18.20 |
+| 1234 | 62 / 80 | 0.4964 | 43.00% | 60.31% | **0.5320** | **46.97%** | **63.24%** | 34.57 ms | 2292.00 MB | 20.80 |
+
+#### 📝 Chi Tiết Log Trích Xuất (Best Epoch của Từng Seed):
+
+**Seed 42 (File: `reports/artifacts/nell/results/train_ppr_seed42_from_ckpt_497.txt`):**
+```
+Namespace(data_path='./data/nell/', seed=42, topk=0.1, topm=-1, gpu=0, fact_ratio=0.95, val_num=-1, epoch=200, layer=8, batchsize=8, cpu=32)
+[VALID] MRR:0.488042 H@1:0.418048 H@10:0.606814
+[TEST]  MRR:0.532998 H@1:0.468062 H@10:0.639106
+[PEAK_GPU_MEM] 2291.12MB
+```
+
+**Seed 123 (File: `reports/artifacts/nell/results/train_ppr_seed123_resume.txt`):**
+```
+Namespace(data_path='./data/nell/', seed=123, topk=0.1, topm=-1, gpu=0, fact_ratio=0.95, val_num=-1, epoch=200, layer=8, batchsize=8, cpu=32)
+[VALID] MRR:0.499361 H@1:0.426335 H@10:0.627072
+[TEST]  MRR:0.524789 H@1:0.458659 H@10:0.626686
+[PEAK_GPU_MEM] 2290.85MB
+```
+
+**Seed 1234 (File: `reports/artifacts/nell/results/train_ppr_seed1234_resume.txt`):**
+```
+Namespace(data_path='./data/nell/', seed=1234, topk=0.1, topm=-1, gpu=0, fact_ratio=0.95, val_num=-1, epoch=200, layer=8, batchsize=8, cpu=32)
+[VALID] MRR:0.496435 H@1:0.430018 H@10:0.603131
+[TEST]  MRR:0.532023 H@1:0.469659 H@10:0.632363
+[PEAK_GPU_MEM] 2292.00MB
+```
+
+**Thống kê tổng hợp NELL-995 (Mean ± Std, n=3 seeds):**
+
+| Metric | Paper gốc (reported) | Tái lập PIVOT (mean±std) | Delta | Đánh giá |
+|:-------|:--------------------:|:------------------------:|:-----:|:--------:|
+| **Test MRR** | 0.532 | **0.5300 ± 0.0045** | −0.002 | ✅ Trong sai số |
+| Test H@1 | 0.471 | 0.4655 ± 0.0059 | −0.005 | ✅ Trong sai số |
+| Test H@10 | 0.635 | 0.6327 ± 0.0062 | −0.002 | ✅ Trong sai số |
+
+
 ---
 
 ## Giai Đoạn 1: Efficiency Logging — Tuần 4–5
@@ -164,6 +224,17 @@ Bảng hiệu năng đầy đủ theo yêu cầu kế hoạch (latency/query, pe
 - **Inference VRAM (FP32 nguyên bản):** Khi tắt AMP FP16 để chạy đo lường benchmark nguyên bản, Peak VRAM lúc suy luận dao động từ **160.37 MB** (ở budget 1%) lên tới **3163.93 MB** (ở budget 20%). Nhờ có cơ chế `@torch.no_grad()` tự động vô hiệu hóa lưu trữ activations trong PyTorch, Peak VRAM ở suy luận được bảo toàn rất tốt so với lúc huấn luyện.
 - **Tốc độ tăng ~10.8×:** Nạp toàn bộ 40,943 PPR score matrices lên CPU RAM một lần → loại bỏ disk I/O bottleneck. Xem [PPR_sampler.py — Pre-loading cache](changes_summary.md#L832).
 
+### Bảng Efficiency (Table 2) — NELL-995 Baseline
+
+| Metric | Seed 1234 | Seed 42 | Seed 123 | **Mean** |
+|:-------|:---------:|:-------:|:--------:|:--------:|
+| Latency/query (ms) | 34.57 | 32.85 | 33.18 | **33.53** |
+| Throughput (q/s) | 28.9 | 30.4 | 30.1 | **29.8** |
+| Peak GPU — Training (MB) | 2292.00 | 2291.12 | 2290.85 | **2291** |
+| Peak GPU — Inference (MB) | 2546.87 | 2546.87 | 2546.87 | **2547** |
+| Total GPU-hours | 20.80 | 16.50 | 18.20 | **18.50** |
+
+
 ---
 
 ## Giai Đoạn 2: PIVOT Development
@@ -183,6 +254,18 @@ Dưới đây là kết quả thực nghiệm chi tiết (tính trung bình trê
 | **10%** *(Baseline)* | 0.5638 ± 0.0018 | 51.19% | 66.28% | 60.81 ms | 1.73x | 16.47 q/s | 1487.09 MB |
 | **20%** | 0.5600 ± 0.0015 | 50.86% | 65.68% | 105.38 ms | 1.00x | 9.50 q/s | 3163.93 MB |
 | *No Budget (Full)* | 0.5600 ± 0.0015 | 50.86% | 65.68% | 105.38 ms | 1.00x | 9.50 q/s | 3163.93 MB |
+
+#### Kết quả Budgeted Protocol — NELL-995
+
+Trích xuất từ grid evaluation (`campaign_grid/grid_t78_nell/pareto_agg.csv`):
+
+| Budget ($	heta$) | Test MRR (Mean±Std) | Test H@1 (Mean) | Test H@10 (Mean) | Latency/Query (ms) | Speedup | Throughput (q/s) | Peak GPU VRAM (MB) |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **1%** | 0.5361 ± 0.0030 | 47.62% | 63.66% | **6.84 ms** | **3.96x** | 146.15 q/s | **394.84 MB** (−84%) |
+| **5%** | 0.5369 ± 0.0042 | 47.44% | 63.77% | **16.19 ms** | **1.67x** | 61.75 q/s | **1714.87 MB** (−33%) |
+| **10%** *(Baseline)* | 0.5354 ± 0.0036 | 47.33% | 63.66% | 27.12 ms | 1.00x | 36.88 q/s | 2546.87 MB |
+| **20%** | 0.5297 ± 0.0050 | 46.74% | 63.15% | 46.37 ms | 0.58x | 21.56 q/s | 3572.94 MB |
+
 
 > ⚠️ **Ghi chú latency:** Latency/q ở bảng này được tính theo quy ước **eval valid+test ÷ 3,134 triple** của Tuần 6; kể từ §1.5 (quy ước chuẩn hoá), latency được tính **test-only ÷ 6,268 truy vấn** → các ô §7 nhỏ hơn ~4×. Hai bảng đo cùng checkpoint, khác quy ước chia.
 > ⚠️ **Ghi chú VRAM WN18RR:** Đo tại `batchsize=16`; §7 cũng dùng `batchsize=16` (WN18RR theo thiết lập mặc định), kết quả VRAM nhất quán giữa hai bảng.
