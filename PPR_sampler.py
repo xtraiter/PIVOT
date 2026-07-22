@@ -5,10 +5,8 @@ import copy
 import numpy as np
 import torch
 import os
-import logging
-import copy
 from tqdm import tqdm
-from scipy.sparse import csr_matrix, coo_matrix
+from scipy.sparse import csr_matrix
 from collections import defaultdict
 
 def get_hop_distances(adj, u, max_hops=3):

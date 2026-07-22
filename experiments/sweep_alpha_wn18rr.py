@@ -1,4 +1,9 @@
 import os
+import argparse as _ap
+_p = _ap.ArgumentParser(description="Alpha sweep WN18RR (hop nhat 0.75 & 0.95)")
+_p.add_argument("--fact_ratio", type=float, default=0.95, choices=[0.75, 0.95])
+ARGS = _p.parse_args()
+_SUF = "fact95" if ARGS.fact_ratio == 0.95 else "v2"
 import re
 import sys
 import subprocess
@@ -36,7 +41,7 @@ def run_eval(seed, alpha):
         "--gpu", "0",
         "--topk", "0.1",
         "--topm", "-1",
-        "--fact_ratio", "0.75",
+        "--fact_ratio", str(ARGS.fact_ratio),
         "--seed", str(seed),
         "--weight", gnn_weight,
         "--rerank_alpha", str(alpha),
@@ -93,14 +98,14 @@ def main():
     # Save raw CSV
     df = pd.DataFrame(results)
     os.makedirs("data/WN18RR/budget_results", exist_ok=True)
-    df.to_csv("data/WN18RR/budget_results/alpha_sweep_raw_v2.csv", index=False)
-    print("\nSaved raw sweep results to data/WN18RR/budget_results/alpha_sweep_raw_v2.csv")
+    df.to_csv("data/WN18RR/budget_results/alpha_sweep_raw_" + _SUF + ".csv", index=False)
+    print("\nSaved raw sweep results to data/WN18RR/budget_results/alpha_sweep_raw_" + _SUF + ".csv")
 
     # ------------ Build Markdown report ------------
     lines = []
-    lines.append("# Báo Cáo Kết Quả Sweep Tham Số \u03b1 \u2014 Post-hoc Reranking (WN18RR) — Phiên Bản Mới (MLP v2, fact_ratio=0.75)")
+    lines.append("# Báo Cáo Kết Quả Sweep Tham Số \u03b1 \u2014 Post-hoc Reranking (WN18RR) — Phiên Bản Mới (MLP v2, fact_ratio=0.95, no_amp=True)")
     lines.append("")
-    lines.append("> **MLP checkpoint:** `data/WN18RR/budget_results/pruning_mlp_v2_best_seed_<seed>.pt` (train lại ngày 10/07/2026, `fact_ratio=0.75`)")
+    lines.append("> **MLP checkpoint:** `data/WN18RR/budget_results/pruning_mlp_v2_best_seed_<seed>.pt` (train lại ngày 10/07/2026, `fact_ratio=0.75` - suy luận trên `fact_ratio=0.95`)")
     lines.append("> **GNN checkpoint:** checkpoint tốt nhất theo Valid MRR cho từng seed.")
     lines.append("> **Protocol:** Validation-based \u2014 ch\u1ecdn \u03b1\u002a theo Valid MRR, b\u00e1o c\u00e1o Test MRR duy nh\u1ea5t t\u1ea1i \u03b1\u002a \u0111\u00f3.")
     lines.append("")
@@ -175,7 +180,7 @@ def main():
 
     # Save to reports/
     os.makedirs("reports", exist_ok=True)
-    report_path = "reports/alpha_sweep_results_no_amp.md"
+    report_path = "reports/alpha_sweep_results_" + _SUF + "_no_amp.md"
     with open(report_path, "w", encoding="utf-8") as f:
         f.write(report_text)
     print(f"\nMarkdown report saved to {report_path}")

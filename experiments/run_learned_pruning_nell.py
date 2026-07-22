@@ -1,7 +1,7 @@
 """
-run_learned_pruning_wn18rr.py  (v3 — Full Multi-seed & PPR Pool Coverage)
+run_learned_pruning_nell.py  (v3 — Full Multi-seed & PPR Pool Coverage)
 ========================================================================
-Sửa đổi toàn diện theo spec và yêu cầu của người dùng:
+Sửa đổi toàn diện cho NELL-995:
   1. 7 features (thêm tail_freq_for_q — nhóm C)
   2. Kiến trúc 64→32 (spec v2), không phải 32→16
   3. Hard negative mining: 30 hard + 20 random per query,
@@ -13,8 +13,8 @@ Sửa đổi toàn diện theo spec và yêu cầu của người dùng:
      - Realistic Recall: coi các query không được bao phủ bởi PPR pool là miss (đúng thực tế inference).
      - Oracle Recall: tự động chèn true tail vào pool nếu bị PPR bỏ lỡ (đánh giá năng lực xếp hạng thuần túy).
 
-Logs chi tiết ra: data/WN18RR/budget_results/pruning_mlp_v2.log
-Bảng csv tổng hợp lưu ra: data/WN18RR/budget_results/pruning_mlp_aggregated_summary.csv
+Logs chi tiết ra: data/nell/budget_results/pruning_mlp_v2.log
+Bảng csv tổng hợp lưu ra: data/nell/budget_results/pruning_mlp_aggregated_summary.csv
 """
 
 import os
@@ -29,17 +29,19 @@ import torch.nn.functional as F
 from collections import defaultdict
 from tqdm import tqdm
 
+import sys as _sys
+from pathlib import Path as _Path
+_sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 from load_data import DataLoader
+from PPR_sampler import get_hop_distances
 from PPR_sampler import pprSampler
 from learned_pruning import PruningMLP, prune_candidates
 
 # ======================================================================
 # 1. Setup Logging
 # ======================================================================
-log_dir = "./data/WN18RR/budget_results"
-log_dir = "./data/WN18RR/budget_results"
+log_dir = "./data/nell/budget_results"
 os.makedirs(log_dir, exist_ok=True)
-# We will set the log file inside main() after parsing args, but setup a dummy here just in case.
 log_file = os.path.join(log_dir, "pruning_mlp_v2.log")
 
 # Clear existing log handlers to avoid duplication
@@ -50,31 +52,16 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
     handlers=[
-        logging.FileHandler(log_file, mode='w'),
+        logging.FileHandler(log_file, mode='a'),
         logging.StreamHandler()
     ]
 )
-logger = logging.getLogger("PruningMLP_v3")
+logger = logging.getLogger("PruningMLP_v3_Nell")
 
 
 # ======================================================================
 # BFS for hop distances
 # ======================================================================
-def get_hop_distances(adj, u, max_hops=3):
-    dist = {u: 0}
-    queue = [u]
-    head = 0
-    while head < len(queue):
-        curr = queue[head]
-        head += 1
-        curr_dist = dist[curr]
-        if curr_dist >= max_hops:
-            continue
-        for neighbor in adj[curr]:
-            if neighbor not in dist:
-                dist[neighbor] = curr_dist + 1
-                queue.append(neighbor)
-    return dist
 
 
 # ======================================================================
@@ -103,7 +90,7 @@ def sample_negatives(ppr_scores, true_tail_idx, n_hard=30, n_random=20):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path', type=str, default='data/WN18RR/')
+    parser.add_argument('--data_path', type=str, default='data/nell/')
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--topk', type=float, default=0.1)
     parser.add_argument('--topm', type=float, default=-1)
@@ -116,19 +103,12 @@ def main():
     parser.add_argument('--n_random_neg', type=int, default=20)
     parser.add_argument('--hinge_margin', type=float, default=1.0)
     parser.add_argument('--early_stop_patience', type=int, default=5)
-    parser.add_argument('--ablation_mode', type=str, default='v4', help='v1, v2, v3, v4, l1, l2, l3')
-    cmd_args = parser.parse_args()
+    parser.add_argument('--ablation_mode', type=str, default='v4', choices=['v1', 'v2', 'v3', 'v4', 'l1', 'l2', 'l3'], help='Ablation mode')
+    args = parser.parse_args()
 
-    torch.cuda.set_device(cmd_args.gpu)
+    torch.cuda.set_device(args.gpu)
 
-    # Re-setup logging with ablation mode
-    for handler in logging.root.handlers[:]:
-        logging.root.removeHandler(handler)
-    log_file_run = os.path.join(log_dir, f"pruning_mlp_v2_ablation_{cmd_args.ablation_mode}.log")
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s', handlers=[logging.FileHandler(log_file_run, mode='w'), logging.StreamHandler()])
-    
-    logger.info(f"Running WN18RR Pruning MLP pipeline (Ablation Mode: {cmd_args.ablation_mode})")
-    logger.info(f"Arguments: {cmd_args}")
+    logger.info(f"Arguments: {args}")
     logger.info("=" * 70)
     logger.info("SPEC COMPLIANCE: 7 features, 64->32 architecture, hard-neg mining, multi-seed evaluation")
     logger.info("=" * 70)
@@ -136,14 +116,14 @@ def main():
     # ------------------------------------------------------------------
     # Load dataset
     # ------------------------------------------------------------------
-    logger.info("Loading WN18RR dataset...")
+    logger.info("Loading NELL dataset...")
     class MockArgs:
         pass
     loader_args = MockArgs()
-    loader_args.data_path = cmd_args.data_path
-    loader_args.cpu = cmd_args.cpu
-    loader_args.topk = cmd_args.topk
-    loader_args.topm = cmd_args.topm
+    loader_args.data_path = args.data_path
+    loader_args.cpu = args.cpu
+    loader_args.topk = args.topk
+    loader_args.topm = args.topm
     loader_args.fact_ratio = 0.75
     loader_args.remove_1hop_edges = False
 
@@ -158,14 +138,14 @@ def main():
     # Build PPR Sampler (Done once to save time)
     # ------------------------------------------------------------------
     logger.info("Initializing PPR Sampler (Pre-loading scores)...")
-    loader_args.n_samp_ent = int(cmd_args.topk * n_ent)
+    loader_args.n_samp_ent = int(args.topk * n_ent)
     loader_args.n_samp_edge = -1
     loader_args.add_manual_edges = False
 
     fact_homo_edges = list(set([(h, t) for (h, r, t) in loader.fact_data]))
     fact_data = np.concatenate([np.array(loader.fact_data), loader.idd_data], 0)
     train_sampler = pprSampler(n_ent, n_rel, loader_args.n_samp_ent, loader_args.n_samp_edge,
-                               fact_homo_edges, fact_data, cmd_args.data_path, split='train', args=loader_args)
+                               fact_homo_edges, fact_data, args.data_path, split='train', args=loader_args)
 
     # ------------------------------------------------------------------
     # Build KG adjacency, degrees, direct edges, relation stats
@@ -200,6 +180,8 @@ def main():
     row_sums = rel_counts.sum(axis=1, keepdims=True)
     rel_dist = torch.tensor(rel_counts / (row_sums + 1e-8))
 
+    hop_distances_cache = {}
+
     # ------------------------------------------------------------------
     # Feature Builder (7 features)
     # ------------------------------------------------------------------
@@ -217,7 +199,9 @@ def main():
         deg_log = torch.log1p(degrees[cids_cpu]).to(ppr_scores.device)
 
         hop_dist = torch.full((N,), 4.0, device=ppr_scores.device)
-        bfs_dists = get_hop_distances(adj, u, max_hops=3)
+        if u not in hop_distances_cache:
+            hop_distances_cache[u] = get_hop_distances(adj, u, max_hops=3)
+        bfs_dists = hop_distances_cache[u]
         for i, cid in enumerate(cids_cpu.tolist()):
             if cid in bfs_dists:
                 hop_dist[i] = float(bfs_dists[cid])
@@ -230,23 +214,23 @@ def main():
         tail_freq_q = tail_freq_norm[cids_cpu, q].to(ppr_scores.device)
         rel_match = rel_dist[cids_cpu, q].to(ppr_scores.device)
 
-        feats_dict = {
-            "ppr_log": ppr_log, "ppr_rank_pct": ppr_rank_pct, "deg_log": deg_log,
-            "hop_dist": hop_dist, "is_direct": is_direct,
-            "tail_freq_q": tail_freq_q, "rel_match": rel_match
-        }
-        
-        mode = cmd_args.ablation_mode.lower()
-        if mode == "v1": selected = ["ppr_log"]
-        elif mode == "v2": selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist"]
-        elif mode == "v3": selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist", "is_direct"]
-        elif mode == "v4": selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist", "is_direct", "tail_freq_q", "rel_match"]
-        elif mode == "l1": selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist", "tail_freq_q", "rel_match"]
-        elif mode == "l2": selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist", "is_direct", "rel_match"]
-        elif mode == "l3": selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist", "is_direct", "tail_freq_q"]
-        else: selected = ["ppr_log", "ppr_rank_pct", "deg_log", "hop_dist", "is_direct", "tail_freq_q", "rel_match"]
-        
-        feats = torch.stack([feats_dict[f] for f in selected], dim=1)
+        mode = getattr(args, 'extract_mode', args.ablation_mode)
+        if mode == 'v1':
+            feats = torch.stack([ppr_log], dim=1)
+        elif mode == 'v2':
+            feats = torch.stack([ppr_log, ppr_rank_pct, deg_log, hop_dist], dim=1)
+        elif mode == 'v3':
+            feats = torch.stack([ppr_log, ppr_rank_pct, deg_log, hop_dist, is_direct], dim=1)
+        elif mode == 'v4':
+            feats = torch.stack([ppr_log, ppr_rank_pct, deg_log, hop_dist, is_direct, tail_freq_q, rel_match], dim=1)
+        elif mode == 'l1':
+            feats = torch.stack([ppr_log, ppr_rank_pct, deg_log, hop_dist, tail_freq_q, rel_match], dim=1)
+        elif mode == 'l2':
+            feats = torch.stack([ppr_log, ppr_rank_pct, deg_log, hop_dist, is_direct, rel_match], dim=1)
+        elif mode == 'l3':
+            feats = torch.stack([ppr_log, ppr_rank_pct, deg_log, hop_dist, is_direct, tail_freq_q], dim=1)
+        else:
+            feats = torch.stack([ppr_log, ppr_rank_pct, deg_log, hop_dist, is_direct, tail_freq_q, rel_match], dim=1)
 
         feats = (feats - feats.mean(0, keepdim=True)) / (feats.std(0, keepdim=True) + 1e-6)
         return feats
@@ -260,8 +244,20 @@ def main():
         collected = []
         count = 0
         covered_count = 0
+        local_ppr_cache = {}
         for h, r, t in tqdm(triples_data, desc=desc, ncols=80):
-            ppr_scores_all = train_sampler.all_ppr_scores[h]
+            if h in local_ppr_cache:
+                ppr_scores_all = local_ppr_cache[h]
+            else:
+                if hasattr(train_sampler, 'all_ppr_scores') and train_sampler.all_ppr_scores is not None:
+                    ppr_scores_all = train_sampler.all_ppr_scores[h]
+                else:
+                    ppr_dict = train_sampler.getPPRscores(h)
+                    ppr_scores_all = np.zeros(n_ent, dtype=np.float32)
+                    for k, v in ppr_dict.items():
+                        ppr_scores_all[k] = v
+                local_ppr_cache[h] = ppr_scores_all
+
             candidate_ids_np = np.argsort(ppr_scores_all)[::-1][:loader_args.n_samp_ent].copy()
 
             cand_list = candidate_ids_np.tolist()
@@ -275,7 +271,10 @@ def main():
                 candidate_ids = torch.tensor(cand_list + [t])
                 true_tail_idx = candidate_ids.numel() - 1
 
-            ppr_scores = torch.tensor(train_sampler.all_ppr_scores[h, candidate_ids.tolist()]).cuda()
+            if hasattr(train_sampler, 'all_ppr_scores') and train_sampler.all_ppr_scores is not None:
+                ppr_scores = torch.tensor(train_sampler.all_ppr_scores[h, candidate_ids.tolist()]).cuda()
+            else:
+                ppr_scores = torch.tensor(ppr_scores_all[candidate_ids.tolist()]).cuda()
             candidate_ids = candidate_ids.cuda()
 
             feats = build_features(h, r, candidate_ids, ppr_scores)
@@ -294,8 +293,35 @@ def main():
         logger.info(f"{desc} | PPR Candidate Pool (size={loader_args.n_samp_ent}) Coverage: {coverage*100:.2f}% ({covered_count}/{count})")
         return collected, coverage
 
-    train_queries, train_coverage = collect_query_data(loader.train_data, "Collecting Train Queries", max_queries=4000)
-    valid_queries, valid_coverage = collect_query_data(val_loader.valid_data, "Collecting Valid Queries", max_queries=1000)
+    cache_file = f"{args.data_path}/budget_results/nell_candidate_features_cache.pt"
+    if os.path.exists(cache_file):
+        logger.info(f"Loading cached features from {cache_file}...")
+        train_queries, valid_queries, train_coverage, valid_coverage = torch.load(cache_file)
+    else:
+        logger.info(f"Cache not found. Extracting FULL (v4) features...")
+        args.extract_mode = 'v4' # Force full features for caching
+        train_queries, train_coverage = collect_query_data(loader.train_data, "Collecting Train Queries", max_queries=4000)
+        valid_queries, valid_coverage = collect_query_data(val_loader.valid_data, "Collecting Valid Queries", max_queries=1000)
+        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        torch.save((train_queries, valid_queries, train_coverage, valid_coverage), cache_file)
+        logger.info(f"Saved FULL features to {cache_file}.")
+
+    # Slice features based on actual ablation mode
+    logger.info(f"Slicing features for ablation mode: {args.ablation_mode}")
+    def slice_feats(feats_v4, mode):
+        if mode == 'v1': return feats_v4[:, [0]]
+        if mode == 'v2': return feats_v4[:, 0:4]
+        if mode == 'v3': return feats_v4[:, 0:5]
+        if mode == 'v4': return feats_v4
+        if mode == 'l1': return feats_v4[:, [0,1,2,3,5,6]]
+        if mode == 'l2': return feats_v4[:, [0,1,2,3,4,6]]
+        if mode == 'l3': return feats_v4[:, [0,1,2,3,4,5]]
+        return feats_v4
+
+    for q in train_queries:
+        q['features'] = slice_feats(q['features'], args.ablation_mode)
+    for q in valid_queries:
+        q['features'] = slice_feats(q['features'], args.ablation_mode)
 
     # ------------------------------------------------------------------
     # Loop over multiple seeds for robust evaluation
@@ -304,7 +330,6 @@ def main():
     budgets = [10, 50, 100, 200, 500]
 
     # Store results for aggregation
-    # format: {seed: {k: {'oracle_mlp': x, 'realistic_mlp': y, 'oracle_ppr': z, 'realistic_ppr': w}}}
     seed_results = {}
 
     for seed in seeds:
@@ -315,26 +340,24 @@ def main():
         np.random.seed(seed)
         torch.manual_seed(seed)
         
-        # 7 input, hidden=64 -> 32 (spec v2)
-        in_dim = len(build_features(0, 0, torch.tensor([0]), torch.tensor([0.0])).squeeze(0))
+        in_dim = train_queries[0]["features"].shape[1]
         model = PruningMLP(in_dim=in_dim, hidden=64).cuda()
-        optimizer = torch.optim.AdamW(model.parameters(), lr=cmd_args.lr, weight_decay=cmd_args.weight_decay)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode='max', factor=0.5, patience=3
         )
 
         best_recall = 0.0
         patience_counter = 0
-        best_model_path = os.path.join(log_dir, f"pruning_mlp_v2_best_seed_{seed}_ablation_{cmd_args.ablation_mode}.pt")
+        best_model_path = os.path.join(log_dir, f"pruning_mlp_v2_best_seed_{seed}_ablation_{args.ablation_mode}.pt")
 
         # Training loop
-        for epoch in range(cmd_args.epochs):
+        for epoch in range(args.epochs):
             model.train()
             total_loss = 0.0
             total_bce = 0.0
             total_hinge = 0.0
             
-            # Shuffle using numpy random (seeded)
             indices = np.arange(len(train_queries))
             np.random.shuffle(indices)
 
@@ -344,13 +367,11 @@ def main():
                 ppr_scores = q["ppr_scores"]
                 features = q["features"]
 
-                # Hard negative sampling
                 neg_indices = sample_negatives(
                     ppr_scores, true_idx,
-                    n_hard=cmd_args.n_hard_neg, n_random=cmd_args.n_random_neg
+                    n_hard=args.n_hard_neg, n_random=args.n_random_neg
                 )
 
-                # Subset: true tail + sampled negatives
                 subset_idx = torch.cat([torch.tensor([true_idx], device=features.device), neg_indices])
                 subset_feats = features[subset_idx]
                 subset_true_idx = 0
@@ -358,19 +379,17 @@ def main():
                 optimizer.zero_grad()
                 scores = model(subset_feats)
 
-                # BCE with pos_weight
                 n_neg = neg_indices.numel()
                 pos_weight = torch.tensor([min(float(n_neg), 50.0)], device=scores.device)
                 labels = torch.zeros_like(scores)
                 labels[subset_true_idx] = 1.0
                 bce_loss = F.binary_cross_entropy_with_logits(scores, labels, pos_weight=pos_weight)
 
-                # Pairwise hinge
                 true_score = scores[subset_true_idx]
                 neg_scores = scores[1:]
-                hinge_loss = F.relu(cmd_args.hinge_margin - (true_score - neg_scores)).mean()
+                hinge_loss = F.relu(args.hinge_margin - (true_score - neg_scores)).mean()
 
-                loss = bce_loss + cmd_args.lambda_rank * hinge_loss
+                loss = bce_loss + args.lambda_rank * hinge_loss
                 loss.backward()
                 optimizer.step()
 
@@ -382,12 +401,10 @@ def main():
             avg_bce = total_bce / len(train_queries)
             avg_hinge = total_hinge / len(train_queries)
 
-            # Evaluate Realistic Recall@100 on valid set for early stopping
             model.eval()
             hits = 0
             with torch.no_grad():
                 for q in valid_queries:
-                    # Only check if covered
                     if not q["is_covered"]:
                         continue
                     kept = prune_candidates(model, q["candidate_ids"], q["features"], 100, use_learned=True)
@@ -398,7 +415,7 @@ def main():
             scheduler.step(val_recall)
 
             logger.info(
-                f"Seed {seed:4d} | Epoch {epoch+1:2d}/{cmd_args.epochs}  |  "
+                f"Seed {seed:4d} | Epoch {epoch+1:2d}/{args.epochs}  |  "
                 f"Loss: {avg_loss:.4f} (BCE: {avg_bce:.4f}, Hinge: {avg_hinge:.4f})  |  "
                 f"Val Realistic R@100: {val_recall:.4f}  |  "
                 f"LR: {optimizer.param_groups[0]['lr']:.2e}"
@@ -410,11 +427,10 @@ def main():
                 torch.save(model.state_dict(), best_model_path)
             else:
                 patience_counter += 1
-                if patience_counter >= cmd_args.early_stop_patience:
+                if patience_counter >= args.early_stop_patience:
                     logger.info(f"Early stopping for seed {seed} at epoch {epoch+1}")
                     break
 
-        # Load best model for this seed and evaluate
         model.load_state_dict(torch.load(best_model_path))
         logger.info(f"Seed {seed} | Best Model loaded (Realistic R@100 = {best_recall:.4f})")
 
@@ -429,7 +445,6 @@ def main():
                 hits_real_ppr = 0
 
                 for q in valid_queries:
-                    # 1. Evaluate MLP
                     kept_mlp = prune_candidates(model, q["candidate_ids"], q["features"], k, use_learned=True)
                     true_id = q["candidate_ids"][q["true_tail_idx"]]
                     
@@ -438,7 +453,6 @@ def main():
                         if q["is_covered"]:
                             hits_real_mlp += 1
 
-                    # 2. Evaluate PPR baseline
                     kept_ppr = prune_candidates(None, q["candidate_ids"], q["features"], k,
                                                 use_learned=False, ppr_scores=q["ppr_scores"])
                     if true_id in kept_ppr:
@@ -459,16 +473,12 @@ def main():
                     f"PPR (Oracle/Real): {seed_results[seed][k]['oracle_ppr']:.4f}/{seed_results[seed][k]['realistic_ppr']:.4f}"
                 )
 
-    # ------------------------------------------------------------------
-    # Aggregate and Compute Mean ± Std across seeds
-    # ------------------------------------------------------------------
     logger.info("=" * 70)
     logger.info("                    AGGREGATED MULTI-SEED ANALYSIS                 ")
     logger.info("=" * 70)
 
     rows = []
     for k in budgets:
-        # Extract values for budget K across seeds
         o_mlp_vals = [seed_results[s][k]["oracle_mlp"] for s in seeds]
         r_mlp_vals = [seed_results[s][k]["realistic_mlp"] for s in seeds]
         o_ppr_vals = [seed_results[s][k]["oracle_ppr"] for s in seeds]
@@ -477,7 +487,6 @@ def main():
         o_diff_vals = [o_mlp - o_ppr for o_mlp, o_ppr in zip(o_mlp_vals, o_ppr_vals)]
         r_diff_vals = [r_mlp - r_ppr for r_mlp, r_ppr in zip(r_mlp_vals, r_ppr_vals)]
 
-        # Stats
         o_mlp_mean, o_mlp_std = np.mean(o_mlp_vals), np.std(o_mlp_vals)
         r_mlp_mean, r_mlp_std = np.mean(r_mlp_vals), np.std(r_mlp_vals)
         o_ppr_mean, o_ppr_std = np.mean(o_ppr_vals), np.std(o_ppr_vals)
@@ -488,23 +497,19 @@ def main():
 
         rows.append({
             "Budget": k,
-            # Oracle
             "Oracle MLP Mean": o_mlp_mean, "Oracle MLP Std": o_mlp_std,
             "Oracle PPR Mean": o_ppr_mean, "Oracle PPR Std": o_ppr_std,
             "Oracle Delta": o_diff_mean,
-            # Realistic
             "Realistic MLP Mean": r_mlp_mean, "Realistic MLP Std": r_mlp_std,
             "Realistic PPR Mean": r_ppr_mean, "Realistic PPR Std": r_ppr_std,
             "Realistic Delta": r_diff_mean
         })
 
     df_agg = pd.DataFrame(rows)
-    # Save CSV summary
-    csv_out = os.path.join(log_dir, f"pruning_mlp_aggregated_summary_ablation_{cmd_args.ablation_mode}.csv")
+    csv_out = os.path.join(log_dir, "pruning_mlp_aggregated_summary.csv")
     df_agg.to_csv(csv_out, index=False)
     logger.info(f"Aggregated summary saved to: {csv_out}")
 
-    # Output detailed report to log
     logger.info(f"PPR Candidate Pool Upper Bound (Validation Coverage): {valid_coverage*100:.2f}%")
     logger.info("-" * 80)
     logger.info("1. REALISTIC EVALUATION (Coi query ngoài candidate pool là miss - Đúng thực tế)")

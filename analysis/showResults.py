@@ -38,5 +38,3 @@ if len(val_mrr_list) > 0:
         print('*'*50)
         print('val_mrr:', val_mrr_list[idx], 'HPs:',params_list[idx])
     print('*'*50)
-
-exit()

@@ -4,7 +4,7 @@
 #   bash run_grid_t78.sh sanity    -> 2 luot kiem tra co
 #   bash run_grid_t78.sh wn18rr    -> 72 luot (~4h)
 #   bash run_grid_t78.sh nell      -> 48 luot (~4h)  (them hybrid: INCLUDE_HYBRID=1)
-# Log: grid_t78_<ds>/{method}_s{seed}_tk{topk}_{split}.log
+# Log: reports/grid_t78_<ds>/{method}_s{seed}_tk{topk}_{split}.log
 # ============================================================
 set -e
 PY=/home/vanba/miniconda3/envs/pivot/bin/python3
@@ -13,7 +13,7 @@ REPO=/home/vanba/KLTN/one-shot-subgraph
 cd "$REPO"
 
 if [ "$DS" == "wn18rr" ] || [ "$DS" == "sanity" ]; then
-    DATA=./data/WN18RR/;  OUT=grid_t78_wn18rr
+    DATA=./data/WN18RR/;  OUT=reports/grid_t78_wn18rr
     CKPT_GLOB='data/WN18RR/saveModel/topk_0.1_layer_8_ValMRR_*_seed%s.pt'
     MLP_DIR=data/WN18RR/budget_results
     declare -A ALPHA=( [42]=0.8 [123]=0.6 [1234]=0.7 )
@@ -22,7 +22,7 @@ if [ "$DS" == "wn18rr" ] || [ "$DS" == "sanity" ]; then
 fi
 
 if [ "$DS" == "nell" ]; then
-    DATA=./data/nell/;    OUT=grid_t78_nell
+    DATA=./data/nell/;    OUT=reports/grid_t78_nell
     CKPT_GLOB='data/nell/saveModel/topk_0.1_layer_8_ValMRR_*_seed%s.pt'
     MLP_DIR=data/nell/budget_results
     declare -A ALPHA=( [42]=0.8 [123]=0.6 [1234]=0.9 )
@@ -64,15 +64,15 @@ run_one() {  # $1=method $2=seed $3=topk $4=split
 }
 
 if [ "$DS" == "sanity" ]; then
-    mkdir -p grid_t78_wn18rr
+    mkdir -p reports/grid_t78_wn18rr
     run_one rerank 42 0.05 valid
     run_one hybrid 42 0.05 valid
     echo "---- KIEM TRA SANITY ----"
     # train_auto.py khong in Namespace; kiem tra bang [VALID] va VRAM
-    R_VALID=$(grep -c '\[VALID\]' grid_t78_wn18rr/rerank_s42_tk0.05_valid.log || echo 0)
-    H_VALID=$(grep -c '\[VALID\]' grid_t78_wn18rr/hybrid_s42_tk0.05_valid.log || echo 0)
-    RM=$(grep -oP '\[PEAK_GPU_MEM\] \K[\d.]+' grid_t78_wn18rr/rerank_s42_tk0.05_valid.log | tail -1)
-    HM=$(grep -oP '\[PEAK_GPU_MEM\] \K[\d.]+' grid_t78_wn18rr/hybrid_s42_tk0.05_valid.log | tail -1)
+    R_VALID=$(grep -c '\[VALID\]' reports/grid_t78_wn18rr/rerank_s42_tk0.05_valid.log || echo 0)
+    H_VALID=$(grep -c '\[VALID\]' reports/grid_t78_wn18rr/hybrid_s42_tk0.05_valid.log || echo 0)
+    RM=$(grep -oP '\[PEAK_GPU_MEM\] \K[\d.]+' reports/grid_t78_wn18rr/rerank_s42_tk0.05_valid.log | tail -1)
+    HM=$(grep -oP '\[PEAK_GPU_MEM\] \K[\d.]+' reports/grid_t78_wn18rr/hybrid_s42_tk0.05_valid.log | tail -1)
     echo "rerank: [VALID] count=$R_VALID (PHAI >= 1) | VRAM=${RM} MB"
     echo "hybrid: [VALID] count=$H_VALID (PHAI >= 1) | VRAM=${HM} MB (PHAI khac rerank)"
     # Kiem tra co [VALID] va VRAM lay duoc

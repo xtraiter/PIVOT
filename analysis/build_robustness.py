@@ -39,8 +39,8 @@ def parse_mrr(path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dir", default="robustness_t10")
-    ap.add_argument("--clean_dir", default="grid_t78_wn18rr")
+    ap.add_argument("--dir", default="reports/robustness_t10")
+    ap.add_argument("--clean_dir", default="reports/grid_t78_wn18rr")
     args = ap.parse_args()
 
     rows = []

@@ -191,9 +191,7 @@ class BaseModel(object):
         self.scheduler.step(valid_mrr)
         
         # shuffle train set
-        if self.args.not_shuffle_train:
-            pass
-        else:
+        if not self.args.not_shuffle_train:
             self.loader.shuffle_train()
             fact_data = np.concatenate([np.array(self.loader.fact_data), self.loader.idd_data], 0)
             self.train_sampler.updateEdges(fact_data)

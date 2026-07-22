@@ -206,7 +206,8 @@ if __name__ == "__main__":
     ap.add_argument("--dataset", default="WN18RR")
     ap.add_argument("--method", default="PPR-only")
     ap.add_argument(
-        "--train_script", default="train_auto.py",
+        "--train_script",
+        default=str(__import__("pathlib").Path(__file__).resolve().parents[1] / "train_auto.py"),
         help="duong dan train_auto.py cua repo goc (neu khong chay tu repo root)",
     )
     ap.add_argument("--use_mlp_pruning", action="store_true", help="Use MLP pruning during evaluation")

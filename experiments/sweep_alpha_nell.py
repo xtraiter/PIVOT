@@ -1,4 +1,9 @@
 import os
+import argparse as _ap
+_p = _ap.ArgumentParser(description="Alpha sweep NELL-995")
+_p.add_argument("--fact_ratio", type=float, default=0.95)
+ARGS = _p.parse_args()
+
 import re
 import sys
 import subprocess

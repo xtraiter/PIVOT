@@ -5,7 +5,7 @@
 #   bash run_robustness_t10.sh sanity   -> 1 luot kiem tra tren del10
 #   bash run_robustness_t10.sh run      -> toan bo config x {ppr,rerank} x 3 seed
 #
-# Diem clean KHONG chay lai — tai dung tu grid_t78_wn18rr (tk0.1).
+# Diem clean KHONG chay lai — tai dung tu reports/grid_t78_wn18rr (tk0.1).
 # LUU Y: luot DAU TIEN cua moi config se kich hoat PPR precompute (lau,
 # hang chuc phut den 1-2 gio — DAY LA HANH VI DUNG, KHONG kill process).
 # Resume-safe: gian doan thi chay lai cung lenh, skip log da co [TEST].
@@ -13,7 +13,7 @@
 set -e
 PY=${PY:-python3}
 MODE=${1:-run}
-OUT=robustness_t10
+OUT=reports/robustness_t10
 mkdir -p $OUT
 
 # alpha* per-seed tu Tuan 9 (FP32, valid-chosen), KHONG tune lai tren do thi nhieu
@@ -30,7 +30,7 @@ mlp_of() {
 CONFIGS=$(ls -d data/WN18RR_del* data/WN18RR_reldel 2>/dev/null \
           | xargs -n1 basename 2>/dev/null || true)
 if [ -z "$CONFIGS" ]; then
-    echo "LOI: chua co thu muc nhieu — chay make_perturbed_datasets_v2.py truoc."
+    echo "LOI: chua co thu muc nhieu — chay experiments/make_perturbed_datasets_v2.py truoc."
     exit 2
 fi
 echo "Cac config phat hien: $CONFIGS"
@@ -138,4 +138,4 @@ done
 echo ""
 echo "XONG TAT CA. Kiem tra so log:"
 ls $OUT/rob_*.log 2>/dev/null | wc -l
-echo "Tiep: python3 build_robustness.py --dir $OUT --clean_dir grid_t78_wn18rr"
+echo "Tiep: python3 analysis/build_robustness.py --dir $OUT --clean_dir reports/grid_t78_wn18rr"
